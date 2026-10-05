@@ -1,0 +1,21 @@
+{
+  "appId": "bo.cambista.app",
+  "appName": "Cambista",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0b0b0d"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "BackgroundRunner": {
+      "label": "bo.cambista.app.daily",
+      "src": "runners/daily.js",
+      "event": "dailyCheck",
+      "repeat": true,
+      "interval": 30,
+      "autoStart": true
+    }
+  }
+}
