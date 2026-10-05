@@ -1,6 +1,6 @@
 # Roadmap de Cambista
 
-Una cosa por Pull Request, en este orden.
+Una cosa por Pull Request, en este orden. Por ahora solo hay APK de Android, armado por GitHub (sin Play Store ni iPhone).
 
 ## v0.1 (actual)
 
@@ -18,13 +18,3 @@ Una cosa por Pull Request, en este orden.
 
 - Tabla con el precio de compra de dólares de cada banco, desde el BCB:
   `https://www.bcb.gob.bo/bcb_tco_publico_ultima_cotizacion.php`
-
-## v0.4: preparar Play Store
-
-- Política de privacidad.
-- Capturas de pantalla.
-- Descripción de la ficha.
-
-## Más adelante
-
-- Versión web instalable para iPhone (PWA).

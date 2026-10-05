@@ -54,8 +54,18 @@
   color-scheme: light;
 }
 
+/* OLED: pure black background so the screen pixels switch off; cards stay a touch lighter to keep their edges. */
+:root[data-theme='oled'] {
+  --bg: #000000;
+  --bar: rgba(0, 0, 0, 0.9);
+  --card: #0e0e10;
+  --card-2: #17171a;
+  --control: #222226;
+  --line: rgba(255, 255, 255, 0.08);
+}
+
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) {
+  :root:not([data-theme='dark']):not([data-theme='oled']) {
     --bg: #f2f2f5;
     --bar: rgba(248, 248, 250, 0.88);
     --card: #ffffff;

@@ -165,7 +165,7 @@ function screenToday() {
 
     <section class="card rate-card">
       <div class="rate-head">
-        <span class="rate-name">Paralelo · USDT P2P</span>
+        <span class="rate-name">Dólar paralelo</span>
         <span class="rate-src">${esc(p2p?.source || 'Binance P2P')}</span>
       </div>
       <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD promedio</span></div>
@@ -279,9 +279,9 @@ function screenSettings() {
         <label class="switch"><input type="checkbox" data-toggle="notify" ${s.notify ? 'checked' : ''} ${s.autoUpdate ? '' : 'disabled'}><span></span></label></div>
       ${isNative() ? '<button class="row" data-action="run-now"><div class="grow">Probar ahora</div><div class="end">Consultar y notificar</div></button>' : ''}
     </section>
-    <p class="footnote">Android revisa cada 30 minutos más o menos, así que la actualización llega entre la hora elegida y unos 30 minutos después. Si tu celular cierra apps para ahorrar batería, quita Cambista de esa lista.</p>
+    <p class="footnote">La actualización llega entre la hora que elijas y unos 30 minutos después, porque Android agrupa las tareas en segundo plano para ahorrar batería. Si no te llega, revisa que Cambista no esté restringida en el ahorro de batería de tu celular.</p>
 
-    <div class="section-label">Paralelo</div>
+    <div class="section-label">Dólar paralelo</div>
     <section class="card pad">
       <div style="margin-bottom:8px">Precio para calcular la brecha</div>
       ${seg('gapSide', [['mid', 'Promedio'], ['buy', 'Compra'], ['sell', 'Venta']])}
@@ -290,7 +290,7 @@ function screenSettings() {
     </section>
 
     <div class="section-label">Apariencia</div>
-    <section class="card pad">${seg('theme', [['system', 'Sistema'], ['dark', 'Oscuro'], ['light', 'Claro']])}</section>
+    <section class="card pad">${seg('theme', [['system', 'Sistema'], ['dark', 'Oscuro'], ['oled', 'OLED'], ['light', 'Claro']])}</section>
 
     <div class="section-label">Datos</div>
     <section class="card">
@@ -300,9 +300,9 @@ function screenSettings() {
     <div class="section-label">Acerca de</div>
     <section class="card">
       <div class="row"><div class="grow">Versión</div><div class="end">${esc(VERSION)}</div></div>
-      <div class="row"><div class="grow">Oficial<div class="sub">Banco Central de Bolivia · bcb.gob.bo</div></div></div>
-      <div class="row"><div class="grow">Paralelo<div class="sub">Binance P2P, USDT/BOB</div></div></div>
-      <div class="row"><div class="grow">Respaldo si fallan<div class="sub">DolarApi · datos de paralelo.bo (CC BY 4.0)</div></div></div>
+      <div class="row"><div class="grow">Dólar oficial<div class="sub">Banco Central de Bolivia · bcb.gob.bo</div></div></div>
+      <div class="row"><div class="grow">Dólar paralelo<div class="sub">Binance P2P, USDT/BOB</div></div></div>
+      <div class="row"><div class="grow">Otras fuentes<div class="sub">DolarApi · paralelo.bo (CC BY 4.0)</div></div></div>
     </section>
     <p class="footnote">Cambista es informativa. Las tasas pueden cambiar en cualquier momento y no son una oferta de compra o venta.<br>© 2026 dani3lsamir. Todos los derechos reservados.</p>
   </main>`;
