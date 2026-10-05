@@ -158,7 +158,7 @@ function screenToday() {
         <span class="rate-name">Oficial BCB</span>
         <span class="rate-src">${esc(bcb?.source || 'BCB')}</span>
       </div>
-      <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/US$</span></div>
+      <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/USD</span></div>
       <div class="rate-meta">${bcb?.validity ? 'Vigente para ' + esc(bcb.validity.replace(/^vigente para /i, '').toLowerCase()) : 'Tipo de cambio oficial del Banco Central'}</div>
       <div class="rate-meta">${bcb ? 'Consultado ' + ago(bcb.at) : 'Sin datos todavía'}</div>
     </section>
@@ -168,7 +168,7 @@ function screenToday() {
         <span class="rate-name">Paralelo · USDT P2P</span>
         <span class="rate-src">${esc(p2p?.source || 'Binance P2P')}</span>
       </div>
-      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/US$ promedio</span></div>
+      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD promedio</span></div>
       <div class="rate-meta">${p2p ? (p2p.count ? `Mediana de ${p2p.count} anuncios por lado · ` : '') + 'consultado ' + ago(p2p.at) : 'Sin datos todavía'}</div>
       <div class="split">
         <div><div class="k">Comprar dólar</div><div class="v num">${fmtNumber(p2p?.buy)}</div></div>
@@ -200,9 +200,9 @@ function calcResults() {
   const atBcb = amount / (bcb?.rate ?? NaN);
   const atP2p = amount / (p2p?.buy ?? NaN);
   return `
-    <div class="row"><div class="grow">Al oficial BCB<div class="sub num">${fmtNumber(bcb?.rate)} Bs por dólar</div></div><div class="end strong num">US$ ${fmtNumber(atBcb)}</div></div>
-    <div class="row"><div class="grow">Comprando en P2P<div class="sub num">${fmtNumber(p2p?.buy)} Bs por dólar</div></div><div class="end strong num">US$ ${fmtNumber(atP2p)}</div></div>
-    <div class="row"><div class="grow">Diferencia</div><div class="end num">US$ ${fmtNumber(atP2p - atBcb)}</div></div>`;
+    <div class="row"><div class="grow">Al oficial BCB<div class="sub num">${fmtNumber(bcb?.rate)} Bs por dólar</div></div><div class="end strong num">USD ${fmtNumber(atBcb)}</div></div>
+    <div class="row"><div class="grow">Comprando en P2P<div class="sub num">${fmtNumber(p2p?.buy)} Bs por dólar</div></div><div class="end strong num">USD ${fmtNumber(atP2p)}</div></div>
+    <div class="row"><div class="grow">Diferencia</div><div class="end num">USD ${fmtNumber(atP2p - atBcb)}</div></div>`;
 }
 
 function screenCalc() {
@@ -215,7 +215,7 @@ function screenCalc() {
       <button data-dir="bs2usd" class="${!usd ? 'on' : ''}">Tengo bolivianos</button>
     </div>
     <section class="card pad" style="margin-top:12px">
-      <label class="amount-cur" for="amount">${usd ? 'Monto en dólares (US$)' : 'Monto en bolivianos (Bs)'}</label>
+      <label class="amount-cur" for="amount">${usd ? 'Monto en dólares (USD)' : 'Monto en bolivianos (Bs)'}</label>
       <input id="amount" class="amount" inputmode="decimal" autocomplete="off" value="${esc(state.calc.amount)}" />
     </section>
     <div class="section-label">${usd ? 'Recibes en bolivianos' : 'Recibes en dólares'}</div>
