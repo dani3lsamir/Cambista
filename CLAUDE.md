@@ -25,6 +25,7 @@ Bank-by-bank buying rates come from the BCB table (Bancos tab); a failure there 
 - Signing keys never go in the repo (`.gitignore` covers *.jks and keystore-base64.txt).
 - Commits are authored by the owner only: `dani3lsamir <175123093+dani3lsamir@users.noreply.github.com>`.
   No Co-Authored-By, Claude-Session or other AI attribution lines in commits or pull requests.
+- Commit messages, pull request titles and descriptions, and release notes are written in English.
 - One change at a time. Run `npm test` and `npm run build` before you say a change is done.
 - Bump `version` in package.json for every release; GitHub sets versionCode from the run number.
 
