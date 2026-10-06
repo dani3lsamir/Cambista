@@ -1,5 +1,6 @@
 // Cambista — storage and background bridge
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { BackgroundRunner } from '@capacitor/background-runner';

@@ -1,5 +1,6 @@
 // Cambista — texts the user sees, in Spanish (Bolivia) and English
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { pickLanguage } from './core/rates-core.js';
 
 const TEXTS = {
@@ -114,7 +115,7 @@ const TEXTS = {
     backupSrc: 'Otras fuentes',
     backupSrcSub: 'DolarApi · paralelo.bo (CC BY 4.0)',
     disclaimer: 'Cambista es informativa. Las tasas pueden cambiar en cualquier momento y no son una oferta de compra o venta.',
-    rights: '© 2026 dani3lsamir. Todos los derechos reservados.',
+    rights: '© 2026 dani3lsamir. Software libre bajo la licencia GPL-3.0 o posterior.',
 
     clearTitle: '¿Borrar el historial?',
     clearText: 'Se eliminan todos los días guardados en este celular. Las tasas de hoy se mantienen.',
@@ -238,7 +239,7 @@ const TEXTS = {
     backupSrc: 'Other sources',
     backupSrcSub: 'DolarApi · paralelo.bo (CC BY 4.0)',
     disclaimer: 'Cambista is for information only. Rates can change at any time and are not an offer to buy or sell.',
-    rights: '© 2026 dani3lsamir. All rights reserved.',
+    rights: '© 2026 dani3lsamir. Free software under the GPL-3.0 or later.',
 
     clearTitle: 'Clear the history?',
     clearText: 'All days saved on this phone will be deleted. Today\'s rates are kept.',

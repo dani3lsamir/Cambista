@@ -1,7 +1,8 @@
 // Cambista — demo data for the browser preview (open the app with ?demo).
 // In a normal browser the BCB and Binance block requests from other sites (CORS);
 // the Android app does not have that limit because requests go through native code.
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 const BCB_HTML = `<div class="tc"><h3>Tipo de cambio oficial</h3><p>Bolivianos por dólar estadounidense</p>
 <p>VIGENTE PARA EL SÁBADO 3, DOMINGO 4 Y LUNES 5 DE OCTUBRE, 2026</p><strong>12,00</strong></div>`;

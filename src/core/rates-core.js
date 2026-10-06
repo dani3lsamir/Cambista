@@ -1,5 +1,6 @@
 // Cambista — rates core
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Pure logic shared by the app and the background runner.
 // Rules for this file (the runner build depends on them):

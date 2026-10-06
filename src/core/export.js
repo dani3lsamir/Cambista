@@ -1,5 +1,6 @@
 // Cambista — history export and import (pure: no DOM, no network)
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { isPlausibleRate } from './rates-core.js';
 
 // CSV for Excel / Google Sheets with Spanish settings: ";" between columns, "," for decimals.

@@ -1,4 +1,5 @@
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from 'vitest';
 import { historyToCsv, exportFileName, parseHistoryCsv } from '../src/core/export.js';
 

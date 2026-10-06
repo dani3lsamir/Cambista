@@ -38,4 +38,4 @@ tests/                   pruebas con Vitest
 
 Usa [Vite](https://vite.dev) para la web y [Capacitor](https://capacitorjs.com) para convertirla en app de Android. La carpeta `android/` no se sube al repo: GitHub la genera en cada build.
 
-© 2026 dani3lsamir. Todos los derechos reservados.
+© 2026 dani3lsamir. Licencia GPL-3.0 o posterior (ver [LICENSE](../LICENSE)).
