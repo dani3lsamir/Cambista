@@ -67,6 +67,21 @@ function sideLabel(side) {
   return side === 'buy' ? t('sideBuy') : side === 'sell' ? t('sideSell') : t('sideMid');
 }
 
+// The BCB writes the validity in Spanish: "el sábado 3, domingo 4 y lunes 5 de octubre, 2026"
+const EN_DATE_WORDS = {
+  lunes: 'Monday', martes: 'Tuesday', miércoles: 'Wednesday', jueves: 'Thursday', viernes: 'Friday',
+  sábado: 'Saturday', domingo: 'Sunday', enero: 'January', febrero: 'February', marzo: 'March',
+  abril: 'April', mayo: 'May', junio: 'June', julio: 'July', agosto: 'August', septiembre: 'September',
+  setiembre: 'September', octubre: 'October', noviembre: 'November', diciembre: 'December',
+  y: 'and', el: '', de: '', del: '',
+};
+function validityText(validity) {
+  const s = validity.replace(/^vigente para /i, '').toLowerCase();
+  if (lang() !== 'en') return s;
+  return s.replace(/[a-záéíóúñ]+/g, (w) => (w in EN_DATE_WORDS ? EN_DATE_WORDS[w] : w))
+    .replace(/\s+/g, ' ').replace(/\s,/g, ',').trim();
+}
+
 // Source names come from rates-core in Spanish, e.g. "DolarApi (respaldo)"
 function sourceName(name) {
   return String(name).replace('(respaldo)', `(${t('backup')})`);
@@ -179,7 +194,7 @@ function screenToday() {
         <span class="rate-src">${esc(sourceName(bcb?.source || 'BCB'))}</span>
       </div>
       <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/USD</span></div>
-      <div class="rate-meta">${bcb?.validity ? t('validFor', { date: esc(bcb.validity.replace(/^vigente para /i, '').toLowerCase()) }) : t('officialAbout')}</div>
+      <div class="rate-meta">${bcb?.validity ? t('validFor', { date: esc(validityText(bcb.validity)) }) : t('officialAbout')}</div>
       <div class="rate-meta">${bcb ? t('checked', { ago: ago(bcb.at) }) : t('noData')}</div>
     </section>
 

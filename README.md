@@ -39,8 +39,12 @@ Use the phone's language or choose Español or English in Settings. Numbers and 
 Dark, OLED (pure black) and light themes, or follow the system, large numbers that are easy to read, and a simple five-tab layout.
 
 <div align="center">
-<img alt="Cambista screenshots" src="docs/capturas.png" width="90%">
+<img alt="Today screen" src="docs/screenshots/1_today.png" width="23%">
+<img alt="Banks screen" src="docs/screenshots/2_banks.png" width="23%">
+<img alt="Calculator screen" src="docs/screenshots/3_calculate.png" width="23%">
+<img alt="History screen" src="docs/screenshots/4_history.png" width="23%">
 </div>
+<p align="center"><sub>Screenshots with sample data.</sub></p>
 
 ## Install
 
