@@ -76,6 +76,16 @@ function upsertDay(history, s) {
   }
 }
 
+// Adds imported days to the history. Days already on the phone are kept as they are.
+export async function importHistory(entries) {
+  const history = await loadHistory();
+  const known = new Set(history.map((h) => h.day));
+  const added = entries.filter((e) => !known.has(e.day));
+  const merged = [...history, ...added].sort((a, b) => (a.day < b.day ? -1 : 1)).slice(-MAX_HISTORY);
+  await write('history', merged);
+  return { history: merged, added: added.length, kept: entries.length - added.length };
+}
+
 export async function clearHistory() {
   await write('history', []);
 }

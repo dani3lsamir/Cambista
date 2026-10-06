@@ -6,9 +6,9 @@ import {
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
-  clearHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings, shareFile,
+  clearHistory, importHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings, shareFile,
 } from './store.js';
-import { historyToCsv, exportFileName } from './core/export.js';
+import { historyToCsv, exportFileName, parseHistoryCsv } from './core/export.js';
 import { demoFetch, demoHistory } from './demo.js';
 
 const VERSION = __APP_VERSION__;
@@ -296,6 +296,7 @@ function screenSettings() {
     <div class="section-label">Datos</div>
     <section class="card">
       <button class="row" data-action="export" ${state.history.length ? '' : 'disabled'}><div class="grow">Exportar historial<div class="sub">${state.history.length ? `${state.history.length} ${state.history.length === 1 ? 'día' : 'días'} en un archivo CSV para Excel o Google Sheets` : 'Todavía no hay días guardados'}</div></div></button>
+      <button class="row" data-action="import"><div class="grow">Importar historial<div class="sub">Desde un CSV exportado por Cambista. Los días que ya tienes no se tocan</div></div></button>
       <button class="row danger" data-action="ask-clear"><div class="grow">Borrar historial</div></button>
     </section>
 
@@ -314,7 +315,7 @@ function sheet() {
   if (state.sheet !== 'clear') return '';
   return `
   <div class="sheet-backdrop" data-action="close-sheet">
-    <div class="sheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="sheet" role="dialog" aria-modal="true">
       <h3>¿Borrar el historial?</h3>
       <p>Se eliminan todos los días guardados en este celular. Las tasas de hoy se mantienen.</p>
       <div class="actions">
@@ -344,6 +345,35 @@ async function updateSetting(key, value) {
   await saveSettings(state.settings);
   if (key === 'adsCount') refresh({ silent: true });
   render();
+}
+
+// The file input lives outside #app: Android re-renders the screen when it comes back from the
+// file picker, and an input inside #app would be gone before it reports the chosen file.
+function pickImportFile() {
+  const input = Object.assign(document.createElement('input'), {
+    type: 'file', accept: '.csv,text/csv,text/comma-separated-values,text/plain', hidden: true,
+  });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.remove();
+    if (!file) return;
+    try {
+      const { entries, skipped } = parseHistoryCsv(await file.text());
+      if (!entries.length) throw new Error('no se encontró ningún día válido');
+      const r = await importHistory(entries);
+      state.history = r.history;
+      render();
+      const parts = [`${r.added} ${r.added === 1 ? 'día nuevo' : 'días nuevos'}`];
+      if (r.kept) parts.push(`${r.kept} ya ${r.kept === 1 ? 'estaba' : 'estaban'}`);
+      if (skipped) parts.push(`${skipped} ${skipped === 1 ? 'fila no válida' : 'filas no válidas'}`);
+      toast('Importado: ' + parts.join(' · '));
+    } catch (err) {
+      toast('No se pudo importar: ' + (err?.message || err));
+    }
+  });
+  input.addEventListener('cancel', () => input.remove());
+  document.body.appendChild(input);
+  input.click();
 }
 
 root.addEventListener('click', async (e) => {
@@ -379,8 +409,14 @@ root.addEventListener('click', async (e) => {
         toast('No se pudo exportar: ' + (err?.message || err));
       }
       break;
+    case 'import': pickImportFile(); break;
     case 'ask-clear': state.sheet = 'clear'; render(); break;
-    case 'close-sheet': state.sheet = null; render(); break;
+    case 'close-sheet':
+      // A tap inside the sheet bubbles up to the backdrop: only the backdrop itself or Cancel closes it.
+      if (t.classList.contains('sheet-backdrop') && e.target.closest('.sheet')) break;
+      state.sheet = null;
+      render();
+      break;
     case 'clear':
       await clearHistory();
       state.history = [];
