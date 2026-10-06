@@ -6,8 +6,9 @@ import {
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
-  clearHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings,
+  clearHistory, importHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings, shareFile,
 } from './store.js';
+import { historyToCsv, exportFileName, parseHistoryCsv } from './core/export.js';
 import { demoFetch, demoHistory } from './demo.js';
 
 const VERSION = __APP_VERSION__;
@@ -158,17 +159,17 @@ function screenToday() {
         <span class="rate-name">Oficial BCB</span>
         <span class="rate-src">${esc(bcb?.source || 'BCB')}</span>
       </div>
-      <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/US$</span></div>
+      <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/USD</span></div>
       <div class="rate-meta">${bcb?.validity ? 'Vigente para ' + esc(bcb.validity.replace(/^vigente para /i, '').toLowerCase()) : 'Tipo de cambio oficial del Banco Central'}</div>
       <div class="rate-meta">${bcb ? 'Consultado ' + ago(bcb.at) : 'Sin datos todavía'}</div>
     </section>
 
     <section class="card rate-card">
       <div class="rate-head">
-        <span class="rate-name">Paralelo · USDT P2P</span>
+        <span class="rate-name">Dólar paralelo</span>
         <span class="rate-src">${esc(p2p?.source || 'Binance P2P')}</span>
       </div>
-      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/US$ promedio</span></div>
+      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD promedio</span></div>
       <div class="rate-meta">${p2p ? (p2p.count ? `Mediana de ${p2p.count} anuncios por lado · ` : '') + 'consultado ' + ago(p2p.at) : 'Sin datos todavía'}</div>
       <div class="split">
         <div><div class="k">Comprar dólar</div><div class="v num">${fmtNumber(p2p?.buy)}</div></div>
@@ -200,9 +201,9 @@ function calcResults() {
   const atBcb = amount / (bcb?.rate ?? NaN);
   const atP2p = amount / (p2p?.buy ?? NaN);
   return `
-    <div class="row"><div class="grow">Al oficial BCB<div class="sub num">${fmtNumber(bcb?.rate)} Bs por dólar</div></div><div class="end strong num">US$ ${fmtNumber(atBcb)}</div></div>
-    <div class="row"><div class="grow">Comprando en P2P<div class="sub num">${fmtNumber(p2p?.buy)} Bs por dólar</div></div><div class="end strong num">US$ ${fmtNumber(atP2p)}</div></div>
-    <div class="row"><div class="grow">Diferencia</div><div class="end num">US$ ${fmtNumber(atP2p - atBcb)}</div></div>`;
+    <div class="row"><div class="grow">Al oficial BCB<div class="sub num">${fmtNumber(bcb?.rate)} Bs por dólar</div></div><div class="end strong num">USD ${fmtNumber(atBcb)}</div></div>
+    <div class="row"><div class="grow">Comprando en P2P<div class="sub num">${fmtNumber(p2p?.buy)} Bs por dólar</div></div><div class="end strong num">USD ${fmtNumber(atP2p)}</div></div>
+    <div class="row"><div class="grow">Diferencia</div><div class="end num">USD ${fmtNumber(atP2p - atBcb)}</div></div>`;
 }
 
 function screenCalc() {
@@ -215,7 +216,7 @@ function screenCalc() {
       <button data-dir="bs2usd" class="${!usd ? 'on' : ''}">Tengo bolivianos</button>
     </div>
     <section class="card pad" style="margin-top:12px">
-      <label class="amount-cur" for="amount">${usd ? 'Monto en dólares (US$)' : 'Monto en bolivianos (Bs)'}</label>
+      <label class="amount-cur" for="amount">${usd ? 'Monto en dólares (USD)' : 'Monto en bolivianos (Bs)'}</label>
       <input id="amount" class="amount" inputmode="decimal" autocomplete="off" value="${esc(state.calc.amount)}" />
     </section>
     <div class="section-label">${usd ? 'Recibes en bolivianos' : 'Recibes en dólares'}</div>
@@ -279,9 +280,9 @@ function screenSettings() {
         <label class="switch"><input type="checkbox" data-toggle="notify" ${s.notify ? 'checked' : ''} ${s.autoUpdate ? '' : 'disabled'}><span></span></label></div>
       ${isNative() ? '<button class="row" data-action="run-now"><div class="grow">Probar ahora</div><div class="end">Consultar y notificar</div></button>' : ''}
     </section>
-    <p class="footnote">Android revisa cada 30 minutos más o menos, así que la actualización llega entre la hora elegida y unos 30 minutos después. Si tu celular cierra apps para ahorrar batería, quita Cambista de esa lista.</p>
+    <p class="footnote">La actualización llega entre la hora que elijas y unos 30 minutos después, porque Android agrupa las tareas en segundo plano para ahorrar batería. Si no te llega, revisa que Cambista no esté restringida en el ahorro de batería de tu celular.</p>
 
-    <div class="section-label">Paralelo</div>
+    <div class="section-label">Dólar paralelo</div>
     <section class="card pad">
       <div style="margin-bottom:8px">Precio para calcular la brecha</div>
       ${seg('gapSide', [['mid', 'Promedio'], ['buy', 'Compra'], ['sell', 'Venta']])}
@@ -290,19 +291,21 @@ function screenSettings() {
     </section>
 
     <div class="section-label">Apariencia</div>
-    <section class="card pad">${seg('theme', [['system', 'Sistema'], ['dark', 'Oscuro'], ['light', 'Claro']])}</section>
+    <section class="card pad">${seg('theme', [['system', 'Sistema'], ['dark', 'Oscuro'], ['oled', 'OLED'], ['light', 'Claro']])}</section>
 
     <div class="section-label">Datos</div>
     <section class="card">
+      <button class="row" data-action="export" ${state.history.length ? '' : 'disabled'}><div class="grow">Exportar historial<div class="sub">${state.history.length ? `${state.history.length} ${state.history.length === 1 ? 'día' : 'días'} en un archivo CSV para Excel o Google Sheets` : 'Todavía no hay días guardados'}</div></div></button>
+      <button class="row" data-action="import"><div class="grow">Importar historial<div class="sub">Desde un CSV exportado por Cambista. Los días que ya tienes no se tocan</div></div></button>
       <button class="row danger" data-action="ask-clear"><div class="grow">Borrar historial</div></button>
     </section>
 
     <div class="section-label">Acerca de</div>
     <section class="card">
       <div class="row"><div class="grow">Versión</div><div class="end">${esc(VERSION)}</div></div>
-      <div class="row"><div class="grow">Oficial<div class="sub">Banco Central de Bolivia · bcb.gob.bo</div></div></div>
-      <div class="row"><div class="grow">Paralelo<div class="sub">Binance P2P, USDT/BOB</div></div></div>
-      <div class="row"><div class="grow">Respaldo si fallan<div class="sub">DolarApi · datos de paralelo.bo (CC BY 4.0)</div></div></div>
+      <div class="row"><div class="grow">Dólar oficial<div class="sub">Banco Central de Bolivia · bcb.gob.bo</div></div></div>
+      <div class="row"><div class="grow">Dólar paralelo<div class="sub">Binance P2P, USDT/BOB</div></div></div>
+      <div class="row"><div class="grow">Otras fuentes<div class="sub">DolarApi · paralelo.bo (CC BY 4.0)</div></div></div>
     </section>
     <p class="footnote">Cambista es informativa. Las tasas pueden cambiar en cualquier momento y no son una oferta de compra o venta.<br>© 2026 dani3lsamir. Todos los derechos reservados.</p>
   </main>`;
@@ -312,7 +315,7 @@ function sheet() {
   if (state.sheet !== 'clear') return '';
   return `
   <div class="sheet-backdrop" data-action="close-sheet">
-    <div class="sheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="sheet" role="dialog" aria-modal="true">
       <h3>¿Borrar el historial?</h3>
       <p>Se eliminan todos los días guardados en este celular. Las tasas de hoy se mantienen.</p>
       <div class="actions">
@@ -344,6 +347,35 @@ async function updateSetting(key, value) {
   render();
 }
 
+// The file input lives outside #app: Android re-renders the screen when it comes back from the
+// file picker, and an input inside #app would be gone before it reports the chosen file.
+function pickImportFile() {
+  const input = Object.assign(document.createElement('input'), {
+    type: 'file', accept: '.csv,text/csv,text/comma-separated-values,text/plain', hidden: true,
+  });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.remove();
+    if (!file) return;
+    try {
+      const { entries, skipped } = parseHistoryCsv(await file.text());
+      if (!entries.length) throw new Error('no se encontró ningún día válido');
+      const r = await importHistory(entries);
+      state.history = r.history;
+      render();
+      const parts = [`${r.added} ${r.added === 1 ? 'día nuevo' : 'días nuevos'}`];
+      if (r.kept) parts.push(`${r.kept} ya ${r.kept === 1 ? 'estaba' : 'estaban'}`);
+      if (skipped) parts.push(`${skipped} ${skipped === 1 ? 'fila no válida' : 'filas no válidas'}`);
+      toast('Importado: ' + parts.join(' · '));
+    } catch (err) {
+      toast('No se pudo importar: ' + (err?.message || err));
+    }
+  });
+  input.addEventListener('cancel', () => input.remove());
+  document.body.appendChild(input);
+  input.click();
+}
+
 root.addEventListener('click', async (e) => {
   const t = e.target.closest('[data-tab],[data-action],[data-dir],[data-seg] button');
   if (!t) return;
@@ -368,8 +400,23 @@ root.addEventListener('click', async (e) => {
   }
   switch (t.dataset.action) {
     case 'refresh': refresh(); break;
+    case 'export':
+      if (!state.history.length) break;
+      try {
+        const shared = await shareFile(exportFileName(localDay()), historyToCsv(state.history));
+        if (shared && !isNative()) toast('Historial descargado');
+      } catch (err) {
+        toast('No se pudo exportar: ' + (err?.message || err));
+      }
+      break;
+    case 'import': pickImportFile(); break;
     case 'ask-clear': state.sheet = 'clear'; render(); break;
-    case 'close-sheet': state.sheet = null; render(); break;
+    case 'close-sheet':
+      // A tap inside the sheet bubbles up to the backdrop: only the backdrop itself or Cancel closes it.
+      if (t.classList.contains('sheet-backdrop') && e.target.closest('.sheet')) break;
+      state.sheet = null;
+      render();
+      break;
     case 'clear':
       await clearHistory();
       state.history = [];
