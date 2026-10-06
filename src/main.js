@@ -6,8 +6,9 @@ import {
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
-  clearHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings,
+  clearHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings, shareFile,
 } from './store.js';
+import { historyToCsv, exportFileName } from './core/export.js';
 import { demoFetch, demoHistory } from './demo.js';
 
 const VERSION = __APP_VERSION__;
@@ -294,6 +295,7 @@ function screenSettings() {
 
     <div class="section-label">Datos</div>
     <section class="card">
+      <button class="row" data-action="export" ${state.history.length ? '' : 'disabled'}><div class="grow">Exportar historial<div class="sub">${state.history.length ? `${state.history.length} ${state.history.length === 1 ? 'día' : 'días'} en un archivo CSV para Excel o Google Sheets` : 'Todavía no hay días guardados'}</div></div></button>
       <button class="row danger" data-action="ask-clear"><div class="grow">Borrar historial</div></button>
     </section>
 
@@ -368,6 +370,15 @@ root.addEventListener('click', async (e) => {
   }
   switch (t.dataset.action) {
     case 'refresh': refresh(); break;
+    case 'export':
+      if (!state.history.length) break;
+      try {
+        const shared = await shareFile(exportFileName(localDay()), historyToCsv(state.history));
+        if (shared && !isNative()) toast('Historial descargado');
+      } catch (err) {
+        toast('No se pudo exportar: ' + (err?.message || err));
+      }
+      break;
     case 'ask-clear': state.sheet = 'clear'; render(); break;
     case 'close-sheet': state.sheet = null; render(); break;
     case 'clear':

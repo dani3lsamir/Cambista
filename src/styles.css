@@ -154,6 +154,7 @@ button { cursor: pointer; }
 .row .end { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .row .end.strong { color: var(--text); font-weight: 600; }
 button.row:active { background: var(--card-2); }
+button.row:disabled { opacity: 0.45; }
 .row.danger { color: var(--error); }
 
 /* ---------- controls ---------- */

@@ -3,6 +3,8 @@
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { BackgroundRunner } from '@capacitor/background-runner';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { DEFAULT_SETTINGS } from './core/rates-core.js';
 
 export const RUNNER_LABEL = 'bo.cambista.app.daily';
@@ -76,6 +78,29 @@ function upsertDay(history, s) {
 
 export async function clearHistory() {
   await write('history', []);
+}
+
+// Android: writes the file to the app's cache and opens the share menu (Drive, WhatsApp, Files…).
+// No storage permission needed. Browser: downloads the file.
+// Returns false if the user closed the share menu without picking an app.
+export async function shareFile(fileName, text) {
+  if (!isNative()) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+  const { uri } = await Filesystem.writeFile({
+    path: fileName, data: text, directory: Directory.Cache, encoding: Encoding.UTF8,
+  });
+  try {
+    await Share.share({ title: 'Historial de Cambista', files: [uri], dialogTitle: 'Guardar o enviar el historial' });
+    return true;
+  } catch (e) {
+    if (/cancel/i.test(e?.message || '')) return false;
+    throw e;
+  }
 }
 
 // ---------- background runner bridge (Android only) ----------

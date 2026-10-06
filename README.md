@@ -10,7 +10,7 @@ Tipo de cambio del dólar en Bolivia, en el celular: **oficial del BCB** frente 
 |---|---|
 | **Hoy** | Oficial BCB (con su vigencia), paralelo P2P (comprar, vender, promedio) y brecha = P2P / BCB − 1 |
 | **Calcular** | "Tengo dólares" o "Tengo bolivianos": cuánto recibes al oficial y en P2P, y la diferencia |
-| **Historial** | Un registro por día guardado en el celular, con gráfico de los últimos 30 días |
+| **Historial** | Un registro por día guardado en el celular, con gráfico de los últimos 30 días. Se puede exportar a CSV desde Ajustes |
 | **Ajustes** | Actualización diaria (sí/no y hora), notificación, precio para la brecha, anuncios para la mediana, tema (sistema, oscuro, OLED, claro) |
 
 ## De dónde salen los datos
