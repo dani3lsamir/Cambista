@@ -1,69 +1,78 @@
 # Cambista
+<img alt="Logo" src="resources/icon-only.png" width="120" />
 
-Tipo de cambio del dólar en Bolivia, en el celular: **oficial del BCB** frente al **paralelo P2P (USDT en Binance)**, la **brecha** entre los dos y una calculadora. Se actualiza sola una vez al día, a la hora que elijas, y te avisa con una notificación.
+<a href="https://github.com/dani3lsamir/cambista/releases/latest"><img alt="Download the APK from GitHub Releases" src="https://img.shields.io/badge/Download-APK-f0b43c?style=for-the-badge&logo=android&logoColor=white" height="40"/></a>
 
-![Pantallas de Cambista](docs/capturas.png)
+Meet Cambista: the US dollar exchange rate in Bolivia, on your phone. See the **official BCB rate** next to the **parallel P2P rate (USDT on Binance)**, the **gap** between them, and a calculator that tells you how much you really get. It updates itself once a day, at the time you choose, and sends you a notification.
 
-## Qué hace
+📊 **OFFICIAL VS PARALLEL AT A GLANCE:**
+The Today screen shows the official rate from the Central Bank of Bolivia (with its validity dates), the P2P buy, sell and average prices, and the gap = P2P / BCB − 1, explained in plain words.
 
-| Pantalla | Para qué |
-|---|---|
-| **Hoy** | Oficial BCB (con su vigencia), paralelo P2P (comprar, vender, promedio) y brecha = P2P / BCB − 1 |
-| **Calcular** | "Tengo dólares" o "Tengo bolivianos": cuánto recibes al oficial y en P2P, y la diferencia |
-| **Historial** | Un registro por día guardado en el celular, con gráfico de los últimos 30 días |
-| **Ajustes** | Actualización diaria (sí/no y hora), notificación, precio para la brecha, anuncios para la mediana, tema, idioma |
+🧮 **BUILT-IN CALCULATOR:**
+Choose "I have dollars" or "I have bolivianos" and see what you get at the official rate and on P2P, plus the difference. P2P uses the price you are paid when you sell and the price you pay when you buy.
 
-## De dónde salen los datos
+📈 **DAILY HISTORY & CHART:**
+One reading per day, saved on your phone, with a chart of the last 30 days and the gap for each day.
 
-| Dato | Fuente principal | Respaldo si falla |
+⏰ **AUTOMATIC DAILY UPDATE:**
+Pick a time and Cambista checks the rates in the background, even when the app is closed, and notifies you with the BCB rate, the P2P rate and the gap.
+
+🛟 **RELIABLE SOURCES WITH BACKUPS:**
+If a main source fails, Cambista falls back to another one and tells you which source each number came from.
+
+| Data | Main source | Backup if it fails |
 |---|---|---|
-| Oficial | Página de inicio del [BCB](https://www.bcb.gob.bo/) ("Tipo de cambio oficial") | DolarApi `/v1/dolares/oficial` |
-| Paralelo | Binance P2P USDT/BOB: mediana de los primeros N anuncios de compra y de venta | [paralelo.bo](https://paralelo.bo/api) (datos CC BY 4.0), luego DolarApi |
+| Official | Home page of the [BCB](https://www.bcb.gob.bo/) ("Tipo de cambio oficial") | DolarApi `/v1/dolares/oficial` |
+| Parallel | Binance P2P USDT/BOB: median of the first N buy and sell ads | [paralelo.bo](https://paralelo.bo/api) (data under CC BY 4.0), then DolarApi |
 
-La app está en **español** y en **inglés**. En Ajustes → Idioma eliges Sistema (usa el idioma del celular), Español o English. En inglés los números usan punto decimal (12.40) y la notificación diaria también sale en inglés.
+🔐 **PRIVACY FIRST:**
+No accounts, no analytics, no location permission, no server. Your settings and history never leave your phone.
 
-En P2P, **comprar dólar** es lo que pagas por 1 USDT, y **vender dólar** es lo que te pagan.
+🌐 **SPANISH & ENGLISH:**
+Use the phone's language or choose Español or English in Settings. Numbers and the daily notification follow the language you pick.
 
-## Cómo armar el APK
+🌙 **CLEAN, MODERN DESIGN:**
+Dark and light themes (or follow the system), large numbers that are easy to read, and a simple four-tab layout.
 
-GitHub lo arma solo (`.github/workflows/android.yml`) cada vez que subes cambios a `main`:
+<div align="center">
+<img alt="Cambista screenshots" src="docs/capturas.png" width="90%">
+</div>
 
-1. Ve a la pestaña **Actions** del repo, abre la última ejecución de **Android APK** y descarga el archivo de **Artifacts**.
-2. Para tener un link directo desde el celular, crea un tag `v0.1.0`. GitHub publica entonces un **Release** con el APK adjunto.
-3. Con los 4 secretos `CAMBISTA_*` configurados, el APK sale firmado con tu llave y las versiones nuevas se instalan encima de las viejas sin perder datos. Sin los secretos sale un APK de prueba (debug).
+## Install
 
-Para instalarlo en Android, abre el APK y permite "instalar apps de origen desconocido" para tu navegador o tu gestor de archivos.
+1. Open the [latest release](https://github.com/dani3lsamir/cambista/releases/latest) and download the APK.
+2. Open the APK on your Android phone and allow "install unknown apps" for your browser or file manager.
 
-## Probar en la computadora
+New signed versions install over the old one without losing your data.
+
+## For developers
 
 ```bash
 npm install
-npm test            # pruebas de la lógica (parsers, cálculo, horario, tarea en segundo plano)
-npm run dev         # abre http://localhost:5173/?demo
+npm test            # logic tests (parsers, calculations, schedule, background task)
+npm run dev         # opens http://localhost:5173/?demo
 ```
 
-En un navegador normal, el BCB y Binance bloquean las consultas desde otros sitios (CORS), así que se usa `?demo` con datos de ejemplo. En la app de Android las consultas pasan por código nativo y no tienen ese límite.
-
-## Cómo está hecho
+In a normal browser the BCB and Binance block requests from other sites (CORS), so `?demo` uses sample data. In the Android app requests go through native code and have no such limit.
 
 ```
-src/core/rates-core.js   lógica pura: leer BCB y Binance, mediana, brecha, formato, horario
-src/runner/daily.js      tarea en segundo plano (Android la corre cada ~30 min, actualiza 1 vez al día)
-src/store.js             guardar ajustes e historial; hablar con la tarea en segundo plano
-src/main.js              pantallas y botones
-src/i18n.js              textos de la app en español e inglés
-src/styles.css           diseño (colores, tarjetas, barra inferior)
-scripts/build-runner.mjs junta rates-core + daily en public/runners/daily.js
-scripts/prepare-android.mjs  ajusta el proyecto Android que genera Capacitor
-tests/                   pruebas con Vitest
+src/core/rates-core.js   pure logic: read BCB and Binance, median, gap, formatting, schedule
+src/runner/daily.js      background task (Android runs it about every 30 min, updates once a day)
+src/store.js             save settings and history; talk to the background task
+src/main.js              screens and buttons
+src/i18n.js              app texts in Spanish and English
+src/styles.css           design (colors, cards, tab bar)
+scripts/build-runner.mjs joins rates-core + daily into public/runners/daily.js
+scripts/prepare-android.mjs  adjusts the Android project generated by Capacitor
+tests/                   Vitest tests
 ```
 
-Usa [Vite](https://vite.dev) para la web y [Capacitor](https://capacitorjs.com) para convertirla en app de Android. La carpeta `android/` no se sube al repo: GitHub la genera en cada build.
+Built with [Vite](https://vite.dev) and [Capacitor](https://capacitorjs.com). GitHub Actions (`.github/workflows/android.yml`) builds the APK on every push to `main`; pushing a tag like `v0.2.0` publishes a Release with the APK attached. With the four `CAMBISTA_*` secrets set, the APK is signed with your key; without them it is a debug build.
 
-## Aviso
+## Disclaimer
 
-Cambista es informativa. Las tasas pueden cambiar en cualquier momento y no son una oferta de compra o venta.
+Cambista is for information only. Rates can change at any time and are not an offer to buy or sell.
 
-## Licencia
+## License
 
-© 2026 dani3lsamir. Todos los derechos reservados. Ver [LICENSE](LICENSE).
+© 2026 dani3lsamir. All rights reserved. See [LICENSE](LICENSE).
