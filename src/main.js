@@ -6,8 +6,9 @@ import {
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
-  clearHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings,
+  clearHistory, importHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings, shareFile,
 } from './store.js';
+import { historyToCsv, exportFileName, parseHistoryCsv } from './core/export.js';
 import { demoFetch, demoHistory } from './demo.js';
 import { t, lang, setLanguage } from './i18n.js';
 
@@ -173,7 +174,7 @@ function screenToday() {
         <span class="rate-name">${t('official')}</span>
         <span class="rate-src">${esc(sourceName(bcb?.source || 'BCB'))}</span>
       </div>
-      <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/US$</span></div>
+      <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/USD</span></div>
       <div class="rate-meta">${bcb?.validity ? t('validFor', { date: esc(bcb.validity.replace(/^vigente para /i, '').toLowerCase()) }) : t('officialAbout')}</div>
       <div class="rate-meta">${bcb ? t('checked', { ago: ago(bcb.at) }) : t('noData')}</div>
     </section>
@@ -183,7 +184,7 @@ function screenToday() {
         <span class="rate-name">${t('parallel')}</span>
         <span class="rate-src">${esc(sourceName(p2p?.source || 'Binance P2P'))}</span>
       </div>
-      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/US$ ${t('average')}</span></div>
+      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD ${t('average')}</span></div>
       <div class="rate-meta">${p2p ? (p2p.count ? t('medianOf', { n: p2p.count }) : '') + t('checkedLower', { ago: ago(p2p.at) }) : t('noData')}</div>
       <div class="split">
         <div><div class="k">${t('buyDollar')}</div><div class="v num">${fmtNumber(p2p?.buy)}</div></div>
@@ -214,9 +215,9 @@ function calcResults() {
   const atBcb = amount / (bcb?.rate ?? NaN);
   const atP2p = amount / (p2p?.buy ?? NaN);
   return `
-    <div class="row"><div class="grow">${t('atOfficial')}<div class="sub num">${t('perDollar', { rate: fmtNumber(bcb?.rate) })}</div></div><div class="end strong num">US$ ${fmtNumber(atBcb)}</div></div>
-    <div class="row"><div class="grow">${t('buyingP2p')}<div class="sub num">${t('perDollar', { rate: fmtNumber(p2p?.buy) })}</div></div><div class="end strong num">US$ ${fmtNumber(atP2p)}</div></div>
-    <div class="row"><div class="grow">${t('difference')}</div><div class="end num">US$ ${fmtNumber(atP2p - atBcb)}</div></div>`;
+    <div class="row"><div class="grow">${t('atOfficial')}<div class="sub num">${t('perDollar', { rate: fmtNumber(bcb?.rate) })}</div></div><div class="end strong num">USD ${fmtNumber(atBcb)}</div></div>
+    <div class="row"><div class="grow">${t('buyingP2p')}<div class="sub num">${t('perDollar', { rate: fmtNumber(p2p?.buy) })}</div></div><div class="end strong num">USD ${fmtNumber(atP2p)}</div></div>
+    <div class="row"><div class="grow">${t('difference')}</div><div class="end num">USD ${fmtNumber(atP2p - atBcb)}</div></div>`;
 }
 
 function screenCalc() {
@@ -304,13 +305,15 @@ function screenSettings() {
     </section>
 
     <div class="section-label">${t('appearance')}</div>
-    <section class="card pad">${seg('theme', [['system', t('system')], ['dark', t('dark')], ['light', t('light')]])}</section>
+    <section class="card pad">${seg('theme', [['system', t('system')], ['dark', t('dark')], ['oled', 'OLED'], ['light', t('light')]])}</section>
 
     <div class="section-label">${t('language')}</div>
     <section class="card pad">${seg('language', [['system', t('system')], ['es', 'Español'], ['en', 'English']])}</section>
 
     <div class="section-label">${t('data')}</div>
     <section class="card">
+      <button class="row" data-action="export" ${state.history.length ? '' : 'disabled'}><div class="grow">${t('exportHistory')}<div class="sub">${state.history.length ? t(state.history.length === 1 ? 'exportOne' : 'exportMany', { n: state.history.length }) : t('noDaysYet')}</div></div></button>
+      <button class="row" data-action="import"><div class="grow">${t('importHistory')}<div class="sub">${t('importWhat')}</div></div></button>
       <button class="row danger" data-action="ask-clear"><div class="grow">${t('clearHistory')}</div></button>
     </section>
 
@@ -329,7 +332,7 @@ function sheet() {
   if (state.sheet !== 'clear') return '';
   return `
   <div class="sheet-backdrop" data-action="close-sheet">
-    <div class="sheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="sheet" role="dialog" aria-modal="true">
       <h3>${t('clearTitle')}</h3>
       <p>${t('clearText')}</p>
       <div class="actions">
@@ -362,32 +365,78 @@ async function updateSetting(key, value) {
   render();
 }
 
+// The file input lives outside #app: Android re-renders the screen when it comes back from the
+// file picker, and an input inside #app would be gone before it reports the chosen file.
+function pickImportFile() {
+  const input = Object.assign(document.createElement('input'), {
+    type: 'file', accept: '.csv,text/csv,text/comma-separated-values,text/plain', hidden: true,
+  });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.remove();
+    if (!file) return;
+    try {
+      const { entries, skipped } = parseHistoryCsv(await file.text());
+      if (!entries.length) throw new Error(t('noValidDay'));
+      const r = await importHistory(entries);
+      state.history = r.history;
+      render();
+      const parts = [t(r.added === 1 ? 'newDay' : 'newDays', { n: r.added })];
+      if (r.kept) parts.push(t(r.kept === 1 ? 'keptDay' : 'keptDays', { n: r.kept }));
+      if (skipped) parts.push(t(skipped === 1 ? 'badRow' : 'badRows', { n: skipped }));
+      toast(t('imported', { parts: parts.join(' · ') }));
+    } catch (err) {
+      toast(t('importFailed', { msg: err?.message || err }));
+    }
+  });
+  input.addEventListener('cancel', () => input.remove());
+  document.body.appendChild(input);
+  input.click();
+}
+
 root.addEventListener('click', async (e) => {
-  const t = e.target.closest('[data-tab],[data-action],[data-dir],[data-seg] button');
-  if (!t) return;
-  if (t.dataset.tab) {
-    state.tab = t.dataset.tab;
+  const el = e.target.closest('[data-tab],[data-action],[data-dir],[data-seg] button');
+  if (!el) return;
+  if (el.dataset.tab) {
+    state.tab = el.dataset.tab;
     window.scrollTo(0, 0);
     render();
     return;
   }
-  if (t.dataset.dir) {
-    state.calc.dir = t.dataset.dir;
-    state.calc.amount = t.dataset.dir === 'usd2bs' ? '100' : '1000';
+  if (el.dataset.dir) {
+    state.calc.dir = el.dataset.dir;
+    state.calc.amount = el.dataset.dir === 'usd2bs' ? '100' : '1000';
     render();
     return;
   }
-  const seg = t.closest('[data-seg]');
+  const seg = el.closest('[data-seg]');
   if (seg) {
     const key = seg.dataset.seg;
-    const raw = t.dataset.value;
+    const raw = el.dataset.value;
     await updateSetting(key, key === 'adsCount' ? Number(raw) : raw);
     return;
   }
-  switch (t.dataset.action) {
+  switch (el.dataset.action) {
     case 'refresh': refresh(); break;
+    case 'export':
+      if (!state.history.length) break;
+      try {
+        const shared = await shareFile(exportFileName(localDay()), historyToCsv(state.history), {
+          title: t('shareTitle'), dialogTitle: t('shareDialog'),
+        });
+        if (shared && !isNative()) toast(t('downloaded'));
+      } catch (err) {
+        toast(t('exportFailed', { msg: err?.message || err }));
+      }
+      break;
+    case 'import': pickImportFile(); break;
     case 'ask-clear': state.sheet = 'clear'; render(); break;
-    case 'close-sheet': state.sheet = null; render(); break;
+    case 'close-sheet':
+      // A tap inside the sheet bubbles up to the backdrop: only the backdrop itself or Cancel closes it.
+      if (el.classList.contains('sheet-backdrop') && e.target.closest('.sheet')) break;
+      state.sheet = null;
+      render();
+      break;
     case 'clear':
       await clearHistory();
       state.history = [];
@@ -411,19 +460,19 @@ root.addEventListener('click', async (e) => {
 });
 
 root.addEventListener('change', async (e) => {
-  const t = e.target;
-  if (t.dataset.toggle) {
-    if (t.dataset.toggle === 'notify' && t.checked) {
+  const el = e.target;
+  if (el.dataset.toggle) {
+    if (el.dataset.toggle === 'notify' && el.checked) {
       const p = await ensureNotificationPermission();
       if (p !== 'granted') {
         toast(t('allowNotifications'));
-        t.checked = false;
+        el.checked = false;
         return;
       }
     }
-    await updateSetting(t.dataset.toggle, t.checked);
+    await updateSetting(el.dataset.toggle, el.checked);
   }
-  if (t.dataset.time && /^\d{2}:\d{2}$/.test(t.value)) await updateSetting(t.dataset.time, t.value);
+  if (el.dataset.time && /^\d{2}:\d{2}$/.test(el.value)) await updateSetting(el.dataset.time, el.value);
 });
 
 root.addEventListener('input', (e) => {

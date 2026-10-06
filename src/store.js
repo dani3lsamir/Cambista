@@ -3,6 +3,8 @@
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { BackgroundRunner } from '@capacitor/background-runner';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { DEFAULT_SETTINGS, pickLanguage } from './core/rates-core.js';
 
 export const RUNNER_LABEL = 'bo.cambista.app.daily';
@@ -74,8 +76,41 @@ function upsertDay(history, s) {
   }
 }
 
+// Adds imported days to the history. Days already on the phone are kept as they are.
+export async function importHistory(entries) {
+  const history = await loadHistory();
+  const known = new Set(history.map((h) => h.day));
+  const added = entries.filter((e) => !known.has(e.day));
+  const merged = [...history, ...added].sort((a, b) => (a.day < b.day ? -1 : 1)).slice(-MAX_HISTORY);
+  await write('history', merged);
+  return { history: merged, added: added.length, kept: entries.length - added.length };
+}
+
 export async function clearHistory() {
   await write('history', []);
+}
+
+// Android: writes the file to the app's cache and opens the share menu (Drive, WhatsApp, Files…).
+// No storage permission needed. Browser: downloads the file.
+// Returns false if the user closed the share menu without picking an app.
+export async function shareFile(fileName, text, labels = {}) {
+  if (!isNative()) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+  const { uri } = await Filesystem.writeFile({
+    path: fileName, data: text, directory: Directory.Cache, encoding: Encoding.UTF8,
+  });
+  try {
+    await Share.share({ title: labels.title, files: [uri], dialogTitle: labels.dialogTitle });
+    return true;
+  } catch (e) {
+    if (/cancel/i.test(e?.message || '')) return false;
+    throw e;
+  }
 }
 
 // ---------- background runner bridge (Android only) ----------
