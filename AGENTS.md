@@ -2,7 +2,8 @@
 
 The owner is learning to code and builds this app with AI. Explain each change in simple Spanish:
 what changed and why. Answer the owner in Spanish. Code, file names and comments are in English;
-text the user sees in the app is in Spanish (Bolivia).
+text the user sees in the app is in Spanish (Bolivia) and English, kept in `src/i18n.js`
+(add every new text in both languages).
 
 ## Product
 

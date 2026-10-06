@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
-  fmtNumber, fmtPercent, notificationText, orderSides, p2pReference, SOURCES,
+  fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -26,6 +26,11 @@ describe('numbers', () => {
     expect(fmtPercent(0.0375)).toBe('+3,8%');
     expect(fmtPercent(-0.01)).toBe('−1,0%');
     expect(fmtNumber(NaN)).toBe('—');
+  });
+  it('formats with dot decimals and comma thousands in English', () => {
+    expect(fmtNumber(1234.5, 2, 'en')).toBe('1,234.50');
+    expect(fmtNumber(-3.2, 2, 'en')).toBe('−3.20');
+    expect(fmtPercent(0.0375, 'en')).toBe('+3.8%');
   });
   it('median works for odd and even lists', () => {
     expect(median([3, 1, 2])).toBe(2);
@@ -117,6 +122,21 @@ describe('gap and references', () => {
     const t = notificationText({ bcb: { rate: 12 }, p2p: { buy: 12.6, sell: 12.2, mid: 12.4 } }, { gapSide: 'mid' });
     expect(t).toBe('BCB 12,00 · P2P 12,40 · Brecha +3,3%');
     expect(notificationText({ bcb: null, p2p: null })).toMatch(/No se pudo/);
+  });
+  it('notification text in English', () => {
+    const t = notificationText({ bcb: { rate: 12 }, p2p: { buy: 12.6, sell: 12.2, mid: 12.4 } }, { gapSide: 'mid', uiLang: 'en' });
+    expect(t).toBe('BCB 12.00 · P2P 12.40 · Gap +3.3%');
+    expect(notificationText({ bcb: null, p2p: null }, { uiLang: 'en' })).toMatch(/Could not update/);
+    expect(notificationTitle({ uiLang: 'en' })).toMatch(/exchange rate/);
+    expect(notificationTitle({})).toMatch(/tipo de cambio/);
+  });
+  it('picks the language from the setting or the phone', () => {
+    expect(pickLanguage('en', 'es-BO')).toBe('en');
+    expect(pickLanguage('es', 'en-US')).toBe('es');
+    expect(pickLanguage('system', 'es-BO')).toBe('es');
+    expect(pickLanguage('system', 'en-US')).toBe('en');
+    expect(pickLanguage('system', 'pt-BR')).toBe('en');
+    expect(pickLanguage(undefined, undefined)).toBe('es');
   });
 });
 

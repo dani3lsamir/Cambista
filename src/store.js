@@ -5,7 +5,7 @@ import { Preferences } from '@capacitor/preferences';
 import { BackgroundRunner } from '@capacitor/background-runner';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { DEFAULT_SETTINGS } from './core/rates-core.js';
+import { DEFAULT_SETTINGS, pickLanguage } from './core/rates-core.js';
 
 export const RUNNER_LABEL = 'bo.cambista.app.daily';
 const MAX_HISTORY = 400;
@@ -93,7 +93,7 @@ export async function clearHistory() {
 // Android: writes the file to the app's cache and opens the share menu (Drive, WhatsApp, Files…).
 // No storage permission needed. Browser: downloads the file.
 // Returns false if the user closed the share menu without picking an app.
-export async function shareFile(fileName, text) {
+export async function shareFile(fileName, text, labels = {}) {
   if (!isNative()) {
     const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
     const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
@@ -105,7 +105,7 @@ export async function shareFile(fileName, text) {
     path: fileName, data: text, directory: Directory.Cache, encoding: Encoding.UTF8,
   });
   try {
-    await Share.share({ title: 'Historial de Cambista', files: [uri], dialogTitle: 'Guardar o enviar el historial' });
+    await Share.share({ title: labels.title, files: [uri], dialogTitle: labels.dialogTitle });
     return true;
   } catch (e) {
     if (/cancel/i.test(e?.message || '')) return false;
@@ -115,10 +115,12 @@ export async function shareFile(fileName, text) {
 
 // ---------- background runner bridge (Android only) ----------
 
+// The runner cannot see the phone's language, so the app sends the resolved one as uiLang.
 export async function syncRunnerSettings(settings) {
   if (!isNative()) return;
   try {
-    await BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'saveSettings', details: { settings } });
+    const withLang = { ...settings, uiLang: pickLanguage(settings.language, navigator.language) };
+    await BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'saveSettings', details: { settings: withLang } });
   } catch (e) {
     console.warn('runner saveSettings failed', e);
   }

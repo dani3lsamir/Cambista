@@ -7,6 +7,7 @@ Una cosa por Pull Request, en este orden. Por ahora solo hay APK de Android, arm
 - Pantallas Hoy, Calcular, Historial y Ajustes.
 - Oficial BCB y paralelo Binance P2P (mediana), con respaldos.
 - Actualización diaria en segundo plano con notificación.
+- Idioma español e inglés (Ajustes → Idioma).
 - Pendiente de probar en el celular: que el BCB y Binance respondan desde el APK, y que la tarea diaria y las notificaciones funcionen en Android.
 
 ## v0.2: precio para mi monto y "¿hoy está barato?"

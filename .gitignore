@@ -1,9 +1,12 @@
+# Dependencies and build output
 node_modules/
 dist/
 android/
 ios/
 out/
 public/runners/
+
+# Signing keys never go in the repo
 *.jks
 *.keystore
 keystore-base64.txt

@@ -1,37 +1,58 @@
 # Cambista
+<img alt="Logo" src="resources/icon-only.png" width="120" />
 
-Tipo de cambio del dólar en Bolivia, en el celular: **oficial del BCB** frente al **paralelo P2P (USDT en Binance)**, la **brecha** entre los dos y una calculadora. Se actualiza sola una vez al día, a la hora que elijas, y te avisa con una notificación.
+<a href="https://github.com/dani3lsamir/cambista/releases/latest"><img alt="Download the APK from GitHub Releases" src="https://img.shields.io/badge/Download-APK-f0b43c?style=for-the-badge&logo=android&logoColor=white" height="40"/></a>
 
-![Pantallas de Cambista](docs/capturas.png)
+Meet Cambista: the US dollar exchange rate in Bolivia, on your phone. See the **official BCB rate** next to the **parallel P2P rate (USDT on Binance)**, the **gap** between them, and a calculator that tells you how much you really get. It updates itself once a day, at the time you choose, and sends you a notification.
 
-## Qué hace
+📊 **OFFICIAL VS PARALLEL AT A GLANCE:**
+The Today screen shows the official rate from the Central Bank of Bolivia (with its validity dates), the P2P buy, sell and average prices, and the gap = P2P / BCB − 1, explained in plain words.
 
-| Pantalla | Para qué |
-|---|---|
-| **Hoy** | Oficial BCB (con su vigencia), paralelo P2P (comprar, vender, promedio) y brecha = P2P / BCB − 1 |
-| **Calcular** | "Tengo dólares" o "Tengo bolivianos": cuánto recibes al oficial y en P2P, y la diferencia |
-| **Historial** | Un registro por día guardado en el celular, con gráfico de los últimos 30 días. Se puede exportar e importar en CSV desde Ajustes |
-| **Ajustes** | Actualización diaria (sí/no y hora), notificación, precio para la brecha, anuncios para la mediana, tema (sistema, oscuro, OLED, claro) |
+🧮 **BUILT-IN CALCULATOR:**
+Choose "I have dollars" or "I have bolivianos" and see what you get at the official rate and on P2P, plus the difference. P2P uses the price you are paid when you sell and the price you pay when you buy.
 
-## De dónde salen los datos
+📈 **DAILY HISTORY & CHART:**
+One reading per day, saved on your phone, with a chart of the last 30 days and the gap for each day. Export it to CSV for Excel or Google Sheets, and import it back on a new phone.
 
-| Dato | Fuente principal | Otras fuentes (si la principal falla) |
+⏰ **AUTOMATIC DAILY UPDATE:**
+Pick a time and Cambista checks the rates in the background, even when the app is closed, and notifies you with the BCB rate, the P2P rate and the gap.
+
+🛟 **RELIABLE SOURCES WITH BACKUPS:**
+If a main source fails, Cambista falls back to another one and tells you which source each number came from.
+
+| Data | Main source | Other sources (if the main one fails) |
 |---|---|---|
-| Dólar oficial | Página de inicio del [BCB](https://www.bcb.gob.bo/) ("Tipo de cambio oficial") | DolarApi `/v1/dolares/oficial` |
-| Dólar paralelo | Binance P2P USDT/BOB: mediana de los primeros N anuncios de compra y de venta | [paralelo.bo](https://paralelo.bo/api) (datos CC BY 4.0), luego DolarApi |
+| Official dollar | Home page of the [BCB](https://www.bcb.gob.bo/) ("Tipo de cambio oficial") | DolarApi `/v1/dolares/oficial` |
+| Parallel dollar | Binance P2P USDT/BOB: median of the first N buy and sell ads | [paralelo.bo](https://paralelo.bo/api) (data under CC BY 4.0), then DolarApi |
 
-En P2P, **comprar dólar** es lo que pagas por 1 USDT, y **vender dólar** es lo que te pagan.
+🔐 **PRIVACY FIRST:**
+No accounts, no analytics, no location permission, no server. Your settings and history never leave your phone.
 
-## Cómo instalarla
+🌐 **SPANISH & ENGLISH:**
+Use the phone's language or choose Español or English in Settings. Numbers and the daily notification follow the language you pick.
 
-1. En el celular, abre la página de [Releases](https://github.com/dani3lsamir/cambista/releases/latest) y descarga `Cambista.apk`.
-2. Ábrelo y, si Android lo pide, permite "instalar apps de origen desconocido" para tu navegador o tu gestor de archivos.
-3. Las versiones nuevas se instalan encima de la anterior sin perder tu historial.
+🌙 **CLEAN, MODERN DESIGN:**
+Dark, OLED (pure black) and light themes, or follow the system, large numbers that are easy to read, and a simple four-tab layout.
 
-## Aviso
+<div align="center">
+<img alt="Cambista screenshots" src="docs/capturas.png" width="90%">
+</div>
 
-Cambista es informativa. Las tasas pueden cambiar en cualquier momento y no son una oferta de compra o venta.
+## Install
 
-## Licencia
+1. On your phone, open the [latest release](https://github.com/dani3lsamir/cambista/releases/latest) and download `Cambista.apk`.
+2. Open the APK on your Android phone and allow "install unknown apps" for your browser or file manager.
 
-© 2026 dani3lsamir. Todos los derechos reservados. Ver [LICENSE](LICENSE).
+New versions install over the old one without losing your history.
+
+## For developers
+
+Build, test and project structure notes (in Spanish) are in [docs/DESARROLLO.md](docs/DESARROLLO.md). Planned features are in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Disclaimer
+
+Cambista is for information only. Rates can change at any time and are not an offer to buy or sell.
+
+## License
+
+© 2026 dani3lsamir. All rights reserved. See [LICENSE](LICENSE).

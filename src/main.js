@@ -2,7 +2,7 @@
 // Copyright (c) 2026 dani3lsamir. All rights reserved.
 import { App } from '@capacitor/app';
 import {
-  fetchSnapshot, p2pReference, gap, fmtNumber, fmtPercent, localDay,
+  fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay,
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
@@ -10,6 +10,7 @@ import {
 } from './store.js';
 import { historyToCsv, exportFileName, parseHistoryCsv } from './core/export.js';
 import { demoFetch, demoHistory } from './demo.js';
+import { t, lang, setLanguage } from './i18n.js';
 
 const VERSION = __APP_VERSION__;
 const DEMO = !isNative() && new URLSearchParams(location.search).has('demo');
@@ -30,36 +31,50 @@ const state = {
 const root = document.getElementById('app');
 
 // ---------------------------------------------------------------- helpers
+const fmtNumber = (n, decimals) => fmtNum(n, decimals, lang());
+const fmtPercent = (ratio) => fmtPct(ratio, lang());
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function ago(iso) {
-  if (!iso) return 'nunca';
+  if (!iso) return t('never');
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.round(ms / 60000);
-  if (min < 1) return 'recién';
-  if (min < 60) return `hace ${min} min`;
+  if (min < 1) return t('justNow');
+  if (min < 60) return t('minAgo', { n: min });
   const h = Math.round(min / 60);
-  if (h < 24) return `hace ${h} h`;
+  if (h < 24) return t('hoursAgo', { n: h });
   const d = Math.round(h / 24);
-  return d === 1 ? 'ayer' : `hace ${d} días`;
+  return d === 1 ? t('yesterday') : t('daysAgo', { n: d });
 }
 
 function clock(iso) {
-  return iso ? new Date(iso).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
+  return iso ? new Date(iso).toLocaleTimeString(t('locale'), { hour: '2-digit', minute: '2-digit' }) : '';
 }
 
 function prettyDay(day) {
   const [y, m, d] = day.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   const today = localDay(new Date());
-  if (day === today) return 'Hoy';
-  return date.toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric', month: 'short' });
+  if (day === today) return t('today');
+  return date.toLocaleDateString(t('locale'), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 const isStale = (iso) => !iso || Date.now() - new Date(iso).getTime() > STALE_MS;
 
 function sideLabel(side) {
-  return side === 'buy' ? 'precio de compra' : side === 'sell' ? 'precio de venta' : 'promedio compra/venta';
+  return side === 'buy' ? t('sideBuy') : side === 'sell' ? t('sideSell') : t('sideMid');
+}
+
+// Source names come from rates-core in Spanish, e.g. "DolarApi (respaldo)"
+function sourceName(name) {
+  return String(name).replace('(respaldo)', `(${t('backup')})`);
+}
+
+// Amount typed in the calculator: "1.234,5" in Spanish, "1,234.5" in English
+function parseAmount(text) {
+  const s = String(text).trim();
+  const plain = lang() === 'en' ? s.replace(/,/g, '') : s.replace(/\./g, '').replace(',', '.');
+  return plain === '' ? NaN : Number(plain);
 }
 
 function toast(msg) {
@@ -101,7 +116,7 @@ async function refresh({ silent = false } = {}) {
   state.errors = snap.errors;
   state.loading = false;
   render();
-  if (!silent && !snap.errors.length) toast('Tipo de cambio actualizado');
+  if (!silent && !snap.errors.length) toast(t('updated'));
 }
 
 async function pullBackground() {
@@ -127,8 +142,8 @@ function screenToday() {
   const g = gap(ref, bcb?.rate);
   const gapClass = g > 0 ? 'up' : g < 0 ? 'down' : '';
   const explain = Number.isFinite(g)
-    ? `El paralelo (${sideLabel(side)}) está ${fmtPercent(Math.abs(g)).replace('+', '')} ${g >= 0 ? 'por encima' : 'por debajo'} del oficial.`
-    : 'Falta una de las dos tasas para calcular la brecha.';
+    ? t(g >= 0 ? 'gapAbove' : 'gapBelow', { side: sideLabel(side), pct: fmtPercent(Math.abs(g)).replace('+', '') })
+    : t('gapMissing');
 
   const lastAt = [bcb?.at, p2p?.at].filter(Boolean).sort().pop();
   const stale = isStale(bcb?.at) || isStale(p2p?.at);
@@ -137,91 +152,90 @@ function screenToday() {
   <main class="screen">
     <div class="title-row">
       <div>
-        <h1 class="title">Hoy</h1>
-        <p class="subtitle">Dólar en Bolivia · oficial y paralelo</p>
+        <h1 class="title">${t('today')}</h1>
+        <p class="subtitle">${t('todaySubtitle')}</p>
       </div>
-      <button class="btn ghost small" data-action="refresh" ${state.loading ? 'disabled' : ''} aria-label="Actualizar">
-        ${state.loading ? '<span class="spin"></span>' : svg('refresh', 18)} Actualizar
+      <button class="btn ghost small" data-action="refresh" ${state.loading ? 'disabled' : ''} aria-label="${t('refresh')}">
+        ${state.loading ? '<span class="spin"></span>' : svg('refresh', 18)} ${t('refresh')}
       </button>
     </div>
 
-    ${DEMO ? '<div class="notice demo">Vista de demostración con datos de ejemplo. En el celular la app consulta el BCB y Binance de verdad.</div><div style="height:12px"></div>' : ''}
+    ${DEMO ? `<div class="notice demo">${t('demo')}</div><div style="height:12px"></div>` : ''}
 
     <section class="hero">
-      <div class="label">Brecha paralelo vs oficial</div>
+      <div class="label">${t('gapLabel')}</div>
       <div class="big num ${gapClass}">${fmtPercent(g)}</div>
       <div class="explain">${explain}</div>
     </section>
 
-    <div class="section-label">Tasas</div>
+    <div class="section-label">${t('rates')}</div>
     <section class="card rate-card">
       <div class="rate-head">
-        <span class="rate-name">Oficial BCB</span>
-        <span class="rate-src">${esc(bcb?.source || 'BCB')}</span>
+        <span class="rate-name">${t('official')}</span>
+        <span class="rate-src">${esc(sourceName(bcb?.source || 'BCB'))}</span>
       </div>
       <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/USD</span></div>
-      <div class="rate-meta">${bcb?.validity ? 'Vigente para ' + esc(bcb.validity.replace(/^vigente para /i, '').toLowerCase()) : 'Tipo de cambio oficial del Banco Central'}</div>
-      <div class="rate-meta">${bcb ? 'Consultado ' + ago(bcb.at) : 'Sin datos todavía'}</div>
+      <div class="rate-meta">${bcb?.validity ? t('validFor', { date: esc(bcb.validity.replace(/^vigente para /i, '').toLowerCase()) }) : t('officialAbout')}</div>
+      <div class="rate-meta">${bcb ? t('checked', { ago: ago(bcb.at) }) : t('noData')}</div>
     </section>
 
     <section class="card rate-card">
       <div class="rate-head">
-        <span class="rate-name">Dólar paralelo</span>
-        <span class="rate-src">${esc(p2p?.source || 'Binance P2P')}</span>
+        <span class="rate-name">${t('parallel')}</span>
+        <span class="rate-src">${esc(sourceName(p2p?.source || 'Binance P2P'))}</span>
       </div>
-      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD promedio</span></div>
-      <div class="rate-meta">${p2p ? (p2p.count ? `Mediana de ${p2p.count} anuncios por lado · ` : '') + 'consultado ' + ago(p2p.at) : 'Sin datos todavía'}</div>
+      <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD ${t('average')}</span></div>
+      <div class="rate-meta">${p2p ? (p2p.count ? t('medianOf', { n: p2p.count }) : '') + t('checkedLower', { ago: ago(p2p.at) }) : t('noData')}</div>
       <div class="split">
-        <div><div class="k">Comprar dólar</div><div class="v num">${fmtNumber(p2p?.buy)}</div></div>
-        <div><div class="k">Vender dólar</div><div class="v num">${fmtNumber(p2p?.sell)}</div></div>
+        <div><div class="k">${t('buyDollar')}</div><div class="v num">${fmtNumber(p2p?.buy)}</div></div>
+        <div><div class="k">${t('sellDollar')}</div><div class="v num">${fmtNumber(p2p?.sell)}</div></div>
       </div>
     </section>
 
-    ${state.errors.length ? `<div class="notice err">No se pudo actualizar todo. Se muestran los últimos datos guardados.<br><span style="color:var(--text-3)">${state.errors.map(esc).join('<br>')}</span></div>` : ''}
+    ${state.errors.length ? `<div class="notice err">${t('partialError')}<br><span style="color:var(--text-3)">${state.errors.map(esc).join('<br>')}</span></div>` : ''}
 
     <div class="status">
       <span class="dot ${state.errors.length ? 'err' : stale ? 'stale' : ''}"></span>
-      ${lastAt ? `Última actualización ${clock(lastAt)} · ${ago(lastAt)}` : 'Toca Actualizar para la primera consulta'}
+      ${lastAt ? t('lastUpdate', { time: clock(lastAt), ago: ago(lastAt) }) : t('firstRefresh')}
     </div>
   </main>`;
 }
 
 function calcResults() {
   const { bcb, p2p } = state.latest;
-  const a = Number(String(state.calc.amount).replace(/\./g, '').replace(',', '.'));
-  const amount = Number.isFinite(a) ? a : NaN;
+  const amount = parseAmount(state.calc.amount);
   if (state.calc.dir === 'usd2bs') {
     const atBcb = amount * (bcb?.rate ?? NaN);
     const atP2p = amount * (p2p?.sell ?? NaN);
     return `
-      <div class="row"><div class="grow">Al oficial BCB<div class="sub num">${fmtNumber(bcb?.rate)} Bs por dólar</div></div><div class="end strong num">Bs ${fmtNumber(atBcb)}</div></div>
-      <div class="row"><div class="grow">Vendiendo en P2P<div class="sub num">${fmtNumber(p2p?.sell)} Bs por dólar</div></div><div class="end strong num">Bs ${fmtNumber(atP2p)}</div></div>
-      <div class="row"><div class="grow">Diferencia</div><div class="end num">Bs ${fmtNumber(atP2p - atBcb)}</div></div>`;
+      <div class="row"><div class="grow">${t('atOfficial')}<div class="sub num">${t('perDollar', { rate: fmtNumber(bcb?.rate) })}</div></div><div class="end strong num">Bs ${fmtNumber(atBcb)}</div></div>
+      <div class="row"><div class="grow">${t('sellingP2p')}<div class="sub num">${t('perDollar', { rate: fmtNumber(p2p?.sell) })}</div></div><div class="end strong num">Bs ${fmtNumber(atP2p)}</div></div>
+      <div class="row"><div class="grow">${t('difference')}</div><div class="end num">Bs ${fmtNumber(atP2p - atBcb)}</div></div>`;
   }
   const atBcb = amount / (bcb?.rate ?? NaN);
   const atP2p = amount / (p2p?.buy ?? NaN);
   return `
-    <div class="row"><div class="grow">Al oficial BCB<div class="sub num">${fmtNumber(bcb?.rate)} Bs por dólar</div></div><div class="end strong num">USD ${fmtNumber(atBcb)}</div></div>
-    <div class="row"><div class="grow">Comprando en P2P<div class="sub num">${fmtNumber(p2p?.buy)} Bs por dólar</div></div><div class="end strong num">USD ${fmtNumber(atP2p)}</div></div>
-    <div class="row"><div class="grow">Diferencia</div><div class="end num">USD ${fmtNumber(atP2p - atBcb)}</div></div>`;
+    <div class="row"><div class="grow">${t('atOfficial')}<div class="sub num">${t('perDollar', { rate: fmtNumber(bcb?.rate) })}</div></div><div class="end strong num">USD ${fmtNumber(atBcb)}</div></div>
+    <div class="row"><div class="grow">${t('buyingP2p')}<div class="sub num">${t('perDollar', { rate: fmtNumber(p2p?.buy) })}</div></div><div class="end strong num">USD ${fmtNumber(atP2p)}</div></div>
+    <div class="row"><div class="grow">${t('difference')}</div><div class="end num">USD ${fmtNumber(atP2p - atBcb)}</div></div>`;
 }
 
 function screenCalc() {
   const usd = state.calc.dir === 'usd2bs';
   return `
   <main class="screen">
-    <div class="title-row"><div><h1 class="title">Calcular</h1><p class="subtitle">Con las tasas de la pantalla Hoy</p></div></div>
+    <div class="title-row"><div><h1 class="title">${t('calc')}</h1><p class="subtitle">${t('calcSubtitle')}</p></div></div>
     <div class="segmented" role="tablist">
-      <button data-dir="usd2bs" class="${usd ? 'on' : ''}">Tengo dólares</button>
-      <button data-dir="bs2usd" class="${!usd ? 'on' : ''}">Tengo bolivianos</button>
+      <button data-dir="usd2bs" class="${usd ? 'on' : ''}">${t('haveUsd')}</button>
+      <button data-dir="bs2usd" class="${!usd ? 'on' : ''}">${t('haveBs')}</button>
     </div>
     <section class="card pad" style="margin-top:12px">
-      <label class="amount-cur" for="amount">${usd ? 'Monto en dólares (USD)' : 'Monto en bolivianos (Bs)'}</label>
+      <label class="amount-cur" for="amount">${usd ? t('amountUsd') : t('amountBs')}</label>
       <input id="amount" class="amount" inputmode="decimal" autocomplete="off" value="${esc(state.calc.amount)}" />
     </section>
-    <div class="section-label">${usd ? 'Recibes en bolivianos' : 'Recibes en dólares'}</div>
+    <div class="section-label">${usd ? t('getBs') : t('getUsd')}</div>
     <section class="card" id="calc-results">${calcResults()}</section>
-    <p class="footnote">P2P usa la mediana de los anuncios de Binance: para vender dólares toma el precio que te pagan; para comprar, el que pagas. Es una referencia, no un precio garantizado.</p>
+    <p class="footnote">${t('calcNote')}</p>
   </main>`;
 }
 
@@ -238,8 +252,8 @@ function chart(history) {
   const line = (key) => pts.map((h, i) => (Number.isFinite(h[key]) ? `${x(i).toFixed(1)},${y(h[key]).toFixed(1)}` : null)).filter(Boolean).join(' ');
   return `
   <section class="card chart">
-    <div class="legend"><span><i style="background:var(--text-2)"></i>Oficial BCB</span><span><i style="background:var(--accent)"></i>P2P promedio</span></div>
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Evolución de los últimos ${pts.length} días">
+    <div class="legend"><span><i style="background:var(--text-2)"></i>${t('chartOfficial')}</span><span><i style="background:var(--accent)"></i>${t('chartP2p')}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('chartLabel', { n: pts.length })}">
       <line x1="0" x2="${W}" y1="${H - 18}" y2="${H - 18}" stroke="var(--line)" />
       <polyline points="${line('bcb')}" fill="none" stroke="var(--text-2)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
       <polyline points="${line('mid')}" fill="none" stroke="var(--accent)" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
@@ -258,8 +272,8 @@ function screenHistory() {
   }).join('');
   return `
   <main class="screen">
-    <div class="title-row"><div><h1 class="title">Historial</h1><p class="subtitle">Una lectura por día, guardada en tu celular</p></div></div>
-    ${state.history.length ? chart(state.history) + `<div class="section-label">Días</div><section class="card">${rows}</section>` : '<div class="card empty">Todavía no hay historial. Cada actualización agrega el día.</div>'}
+    <div class="title-row"><div><h1 class="title">${t('history')}</h1><p class="subtitle">${t('historySubtitle')}</p></div></div>
+    ${state.history.length ? chart(state.history) + `<div class="section-label">${t('days')}</div><section class="card">${rows}</section>` : `<div class="card empty">${t('noHistory')}</div>`}
   </main>`;
 }
 
@@ -268,46 +282,49 @@ function screenSettings() {
   const seg = (key, options) => `<div class="segmented" data-seg="${key}">${options.map(([v, l]) => `<button data-value="${v}" class="${String(s[key]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   return `
   <main class="screen">
-    <div class="title-row"><div><h1 class="title">Ajustes</h1></div></div>
+    <div class="title-row"><div><h1 class="title">${t('settings')}</h1></div></div>
 
-    <div class="section-label">Actualización automática</div>
+    <div class="section-label">${t('autoUpdate')}</div>
     <section class="card">
-      <div class="row"><div class="grow">Actualizar una vez al día<div class="sub">Aunque la app esté cerrada</div></div>
+      <div class="row"><div class="grow">${t('dailyUpdate')}<div class="sub">${t('evenClosed')}</div></div>
         <label class="switch"><input type="checkbox" data-toggle="autoUpdate" ${s.autoUpdate ? 'checked' : ''}><span></span></label></div>
-      <div class="row"><div class="grow">Hora</div>
+      <div class="row"><div class="grow">${t('time')}</div>
         <input type="time" class="time-input" data-time="updateTime" value="${esc(s.updateTime)}" ${s.autoUpdate ? '' : 'disabled'}></div>
-      <div class="row"><div class="grow">Avisarme con una notificación<div class="sub">BCB, P2P y brecha del día</div></div>
+      <div class="row"><div class="grow">${t('notifyMe')}<div class="sub">${t('notifyWhat')}</div></div>
         <label class="switch"><input type="checkbox" data-toggle="notify" ${s.notify ? 'checked' : ''} ${s.autoUpdate ? '' : 'disabled'}><span></span></label></div>
-      ${isNative() ? '<button class="row" data-action="run-now"><div class="grow">Probar ahora</div><div class="end">Consultar y notificar</div></button>' : ''}
+      ${isNative() ? `<button class="row" data-action="run-now"><div class="grow">${t('tryNow')}</div><div class="end">${t('tryNowWhat')}</div></button>` : ''}
     </section>
-    <p class="footnote">La actualización llega entre la hora que elijas y unos 30 minutos después, porque Android agrupa las tareas en segundo plano para ahorrar batería. Si no te llega, revisa que Cambista no esté restringida en el ahorro de batería de tu celular.</p>
+    <p class="footnote">${t('autoNote')}</p>
 
-    <div class="section-label">Dólar paralelo</div>
+    <div class="section-label">${t('parallelSection')}</div>
     <section class="card pad">
-      <div style="margin-bottom:8px">Precio para calcular la brecha</div>
-      ${seg('gapSide', [['mid', 'Promedio'], ['buy', 'Compra'], ['sell', 'Venta']])}
-      <div style="margin:16px 0 8px">Anuncios de Binance para la mediana</div>
+      <div style="margin-bottom:8px">${t('gapPrice')}</div>
+      ${seg('gapSide', [['mid', t('mid')], ['buy', t('buy')], ['sell', t('sell')]])}
+      <div style="margin:16px 0 8px">${t('adsForMedian')}</div>
       ${seg('adsCount', [[5, '5'], [10, '10'], [20, '20']])}
     </section>
 
-    <div class="section-label">Apariencia</div>
-    <section class="card pad">${seg('theme', [['system', 'Sistema'], ['dark', 'Oscuro'], ['oled', 'OLED'], ['light', 'Claro']])}</section>
+    <div class="section-label">${t('appearance')}</div>
+    <section class="card pad">${seg('theme', [['system', t('system')], ['dark', t('dark')], ['oled', 'OLED'], ['light', t('light')]])}</section>
 
-    <div class="section-label">Datos</div>
+    <div class="section-label">${t('language')}</div>
+    <section class="card pad">${seg('language', [['system', t('system')], ['es', 'Español'], ['en', 'English']])}</section>
+
+    <div class="section-label">${t('data')}</div>
     <section class="card">
-      <button class="row" data-action="export" ${state.history.length ? '' : 'disabled'}><div class="grow">Exportar historial<div class="sub">${state.history.length ? `${state.history.length} ${state.history.length === 1 ? 'día' : 'días'} en un archivo CSV para Excel o Google Sheets` : 'Todavía no hay días guardados'}</div></div></button>
-      <button class="row" data-action="import"><div class="grow">Importar historial<div class="sub">Desde un CSV exportado por Cambista. Los días que ya tienes no se tocan</div></div></button>
-      <button class="row danger" data-action="ask-clear"><div class="grow">Borrar historial</div></button>
+      <button class="row" data-action="export" ${state.history.length ? '' : 'disabled'}><div class="grow">${t('exportHistory')}<div class="sub">${state.history.length ? t(state.history.length === 1 ? 'exportOne' : 'exportMany', { n: state.history.length }) : t('noDaysYet')}</div></div></button>
+      <button class="row" data-action="import"><div class="grow">${t('importHistory')}<div class="sub">${t('importWhat')}</div></div></button>
+      <button class="row danger" data-action="ask-clear"><div class="grow">${t('clearHistory')}</div></button>
     </section>
 
-    <div class="section-label">Acerca de</div>
+    <div class="section-label">${t('about')}</div>
     <section class="card">
-      <div class="row"><div class="grow">Versión</div><div class="end">${esc(VERSION)}</div></div>
-      <div class="row"><div class="grow">Dólar oficial<div class="sub">Banco Central de Bolivia · bcb.gob.bo</div></div></div>
-      <div class="row"><div class="grow">Dólar paralelo<div class="sub">Binance P2P, USDT/BOB</div></div></div>
-      <div class="row"><div class="grow">Otras fuentes<div class="sub">DolarApi · paralelo.bo (CC BY 4.0)</div></div></div>
+      <div class="row"><div class="grow">${t('version')}</div><div class="end">${esc(VERSION)}</div></div>
+      <div class="row"><div class="grow">${t('officialSrc')}<div class="sub">${t('officialSrcSub')}</div></div></div>
+      <div class="row"><div class="grow">${t('parallelSrc')}<div class="sub">Binance P2P, USDT/BOB</div></div></div>
+      <div class="row"><div class="grow">${t('backupSrc')}<div class="sub">${t('backupSrcSub')}</div></div></div>
     </section>
-    <p class="footnote">Cambista es informativa. Las tasas pueden cambiar en cualquier momento y no son una oferta de compra o venta.<br>© 2026 dani3lsamir. Todos los derechos reservados.</p>
+    <p class="footnote">${t('disclaimer')}<br>${t('rights')}</p>
   </main>`;
 }
 
@@ -316,18 +333,18 @@ function sheet() {
   return `
   <div class="sheet-backdrop" data-action="close-sheet">
     <div class="sheet" role="dialog" aria-modal="true">
-      <h3>¿Borrar el historial?</h3>
-      <p>Se eliminan todos los días guardados en este celular. Las tasas de hoy se mantienen.</p>
+      <h3>${t('clearTitle')}</h3>
+      <p>${t('clearText')}</p>
       <div class="actions">
-        <button class="btn danger block" data-action="clear">Borrar historial</button>
-        <button class="btn ghost block" data-action="close-sheet">Cancelar</button>
+        <button class="btn danger block" data-action="clear">${t('clearHistory')}</button>
+        <button class="btn ghost block" data-action="close-sheet">${t('cancel')}</button>
       </div>
     </div>
   </div>`;
 }
 
 function tabbar() {
-  const tabs = [['today', 'Hoy'], ['calc', 'Calcular'], ['history', 'Historial'], ['settings', 'Ajustes']];
+  const tabs = [['today', t('today')], ['calc', t('calc')], ['history', t('history')], ['settings', t('settings')]];
   return `<nav class="tabbar"><div class="tabbar-inner">${tabs.map(([k, l]) => `<button class="tab ${state.tab === k ? 'on' : ''}" data-tab="${k}">${svg(k === 'today' ? 'today' : k)}${l}</button>`).join('')}</div></nav>`;
 }
 
@@ -342,6 +359,7 @@ function render() {
 async function updateSetting(key, value) {
   state.settings = { ...state.settings, [key]: value };
   if (key === 'theme') applyTheme();
+  if (key === 'language') setLanguage(value);
   await saveSettings(state.settings);
   if (key === 'adsCount') refresh({ silent: true });
   render();
@@ -359,16 +377,16 @@ function pickImportFile() {
     if (!file) return;
     try {
       const { entries, skipped } = parseHistoryCsv(await file.text());
-      if (!entries.length) throw new Error('no se encontró ningún día válido');
+      if (!entries.length) throw new Error(t('noValidDay'));
       const r = await importHistory(entries);
       state.history = r.history;
       render();
-      const parts = [`${r.added} ${r.added === 1 ? 'día nuevo' : 'días nuevos'}`];
-      if (r.kept) parts.push(`${r.kept} ya ${r.kept === 1 ? 'estaba' : 'estaban'}`);
-      if (skipped) parts.push(`${skipped} ${skipped === 1 ? 'fila no válida' : 'filas no válidas'}`);
-      toast('Importado: ' + parts.join(' · '));
+      const parts = [t(r.added === 1 ? 'newDay' : 'newDays', { n: r.added })];
+      if (r.kept) parts.push(t(r.kept === 1 ? 'keptDay' : 'keptDays', { n: r.kept }));
+      if (skipped) parts.push(t(skipped === 1 ? 'badRow' : 'badRows', { n: skipped }));
+      toast(t('imported', { parts: parts.join(' · ') }));
     } catch (err) {
-      toast('No se pudo importar: ' + (err?.message || err));
+      toast(t('importFailed', { msg: err?.message || err }));
     }
   });
   input.addEventListener('cancel', () => input.remove());
@@ -377,43 +395,45 @@ function pickImportFile() {
 }
 
 root.addEventListener('click', async (e) => {
-  const t = e.target.closest('[data-tab],[data-action],[data-dir],[data-seg] button');
-  if (!t) return;
-  if (t.dataset.tab) {
-    state.tab = t.dataset.tab;
+  const el = e.target.closest('[data-tab],[data-action],[data-dir],[data-seg] button');
+  if (!el) return;
+  if (el.dataset.tab) {
+    state.tab = el.dataset.tab;
     window.scrollTo(0, 0);
     render();
     return;
   }
-  if (t.dataset.dir) {
-    state.calc.dir = t.dataset.dir;
-    state.calc.amount = t.dataset.dir === 'usd2bs' ? '100' : '1000';
+  if (el.dataset.dir) {
+    state.calc.dir = el.dataset.dir;
+    state.calc.amount = el.dataset.dir === 'usd2bs' ? '100' : '1000';
     render();
     return;
   }
-  const seg = t.closest('[data-seg]');
+  const seg = el.closest('[data-seg]');
   if (seg) {
     const key = seg.dataset.seg;
-    const raw = t.dataset.value;
+    const raw = el.dataset.value;
     await updateSetting(key, key === 'adsCount' ? Number(raw) : raw);
     return;
   }
-  switch (t.dataset.action) {
+  switch (el.dataset.action) {
     case 'refresh': refresh(); break;
     case 'export':
       if (!state.history.length) break;
       try {
-        const shared = await shareFile(exportFileName(localDay()), historyToCsv(state.history));
-        if (shared && !isNative()) toast('Historial descargado');
+        const shared = await shareFile(exportFileName(localDay()), historyToCsv(state.history), {
+          title: t('shareTitle'), dialogTitle: t('shareDialog'),
+        });
+        if (shared && !isNative()) toast(t('downloaded'));
       } catch (err) {
-        toast('No se pudo exportar: ' + (err?.message || err));
+        toast(t('exportFailed', { msg: err?.message || err }));
       }
       break;
     case 'import': pickImportFile(); break;
     case 'ask-clear': state.sheet = 'clear'; render(); break;
     case 'close-sheet':
       // A tap inside the sheet bubbles up to the backdrop: only the backdrop itself or Cancel closes it.
-      if (t.classList.contains('sheet-backdrop') && e.target.closest('.sheet')) break;
+      if (el.classList.contains('sheet-backdrop') && e.target.closest('.sheet')) break;
       state.sheet = null;
       render();
       break;
@@ -422,37 +442,37 @@ root.addEventListener('click', async (e) => {
       state.history = [];
       state.sheet = null;
       render();
-      toast('Historial borrado');
+      toast(t('cleared'));
       break;
     case 'run-now':
-      toast('Consultando en segundo plano…');
+      toast(t('checkingBg'));
       try {
         await ensureNotificationPermission();
         const r = await runRunnerNow();
         await pullBackground();
         render();
-        toast(r && r.ok ? 'Listo: revisa la notificación' : 'Falló la consulta en segundo plano');
+        toast(r && r.ok ? t('bgDone') : t('bgFailed'));
       } catch (err) {
-        toast('Error: ' + (err?.message || err));
+        toast(t('error', { msg: err?.message || err }));
       }
       break;
   }
 });
 
 root.addEventListener('change', async (e) => {
-  const t = e.target;
-  if (t.dataset.toggle) {
-    if (t.dataset.toggle === 'notify' && t.checked) {
+  const el = e.target;
+  if (el.dataset.toggle) {
+    if (el.dataset.toggle === 'notify' && el.checked) {
       const p = await ensureNotificationPermission();
       if (p !== 'granted') {
-        toast('Activa las notificaciones de Cambista en los ajustes de Android');
-        t.checked = false;
+        toast(t('allowNotifications'));
+        el.checked = false;
         return;
       }
     }
-    await updateSetting(t.dataset.toggle, t.checked);
+    await updateSetting(el.dataset.toggle, el.checked);
   }
-  if (t.dataset.time && /^\d{2}:\d{2}$/.test(t.value)) await updateSetting(t.dataset.time, t.value);
+  if (el.dataset.time && /^\d{2}:\d{2}$/.test(el.value)) await updateSetting(el.dataset.time, el.value);
 });
 
 root.addEventListener('input', (e) => {
@@ -465,6 +485,7 @@ root.addEventListener('input', (e) => {
 // ---------------------------------------------------------------- boot
 async function boot() {
   state.settings = await loadSettings();
+  setLanguage(state.settings.language);
   applyTheme();
   state.latest = await loadLatest();
   state.history = await loadHistory();

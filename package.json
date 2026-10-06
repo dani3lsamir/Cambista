@@ -1,6 +1,6 @@
 {
   "name": "cambista",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tipo de cambio en Bolivia: oficial BCB vs paralelo P2P",
   "scripts": {
     "dev": "node scripts/build-runner.mjs && vite",
