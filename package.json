@@ -1,6 +1,6 @@
 {
   "name": "cambista",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Tipo de cambio en Bolivia: oficial BCB vs paralelo P2P",
   "scripts": {
     "dev": "node scripts/build-runner.mjs && vite",
@@ -9,7 +9,7 @@
     "android:prepare": "node scripts/prepare-android.mjs"
   },
   "author": "dani3lsamir",
-  "license": "UNLICENSED",
+  "license": "GPL-3.0-or-later",
   "dependencies": {
     "@capacitor/app": "^8.1.2",
     "@capacitor/background-runner": "^3.0.0",

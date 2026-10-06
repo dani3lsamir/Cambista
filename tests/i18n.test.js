@@ -1,5 +1,6 @@
 // Cambista — tests for the Spanish / English texts
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from 'vitest';
 import { t, setLanguage, TEXT_KEYS } from '../src/i18n.js';
 

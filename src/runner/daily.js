@@ -1,5 +1,6 @@
 // Cambista — background runner
-// Copyright (c) 2026 dani3lsamir. All rights reserved.
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Runs outside the app (Android WorkManager, about every 30 minutes).
 // scripts/build-runner.mjs glues src/core/rates-core.js in front of this file and writes
