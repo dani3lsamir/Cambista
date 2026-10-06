@@ -22,7 +22,15 @@ export const DEFAULT_SETTINGS = {
   gapSide: 'mid', // 'mid' | 'buy' | 'sell'
   adsCount: 10,
   theme: 'system', // 'system' | 'dark' | 'light'
+  language: 'system', // 'system' | 'es' | 'en'
 };
+
+// Language the app shows: the user's choice, or the phone's language (Spanish if it is
+// Spanish, English otherwise).
+export function pickLanguage(setting, deviceLanguage) {
+  if (setting === 'es' || setting === 'en') return setting;
+  return /^es\b/i.test(String(deviceLanguage || 'es')) ? 'es' : 'en';
+}
 
 // "12,00" -> 12 ; "1.234,56" -> 1234.56 ; "12.45" -> 12.45
 export function parseLocaleNumber(text) {
@@ -247,29 +255,37 @@ export function isDue(settings, lastRunDay, now) {
   return at.getHours() * 60 + at.getMinutes() >= t.h * 60 + t.m;
 }
 
-export function fmtNumber(n, decimals) {
+// Spanish (Bolivia): 1.234,50 ; English: 1,234.50
+export function fmtNumber(n, decimals, lang) {
   if (!Number.isFinite(n)) return '—';
   const d = decimals === undefined ? 2 : decimals;
+  const en = lang === 'en';
   const fixed = Math.abs(n).toFixed(d);
   const parts = fixed.split('.');
-  const int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return (n < 0 ? '−' : '') + int + (parts[1] ? ',' + parts[1] : '');
+  const int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, en ? ',' : '.');
+  return (n < 0 ? '−' : '') + int + (parts[1] ? (en ? '.' : ',') + parts[1] : '');
 }
 
-export function fmtPercent(ratio) {
+export function fmtPercent(ratio, lang) {
   if (!Number.isFinite(ratio)) return '—';
   const sign = ratio > 0 ? '+' : ratio < 0 ? '−' : '';
-  return sign + fmtNumber(Math.abs(ratio) * 100, 1) + '%';
+  return sign + fmtNumber(Math.abs(ratio) * 100, 1, lang) + '%';
 }
 
 export function notificationText(snapshot, settings) {
   const s = Object.assign({}, DEFAULT_SETTINGS, settings || {});
   const bcb = snapshot && snapshot.bcb ? snapshot.bcb.rate : NaN;
   const ref = p2pReference(snapshot && snapshot.p2p, s.gapSide);
+  const en = s.uiLang === 'en';
   const parts = [];
-  if (Number.isFinite(bcb)) parts.push('BCB ' + fmtNumber(bcb));
-  if (Number.isFinite(ref)) parts.push('P2P ' + fmtNumber(ref));
+  if (Number.isFinite(bcb)) parts.push('BCB ' + fmtNumber(bcb, 2, s.uiLang));
+  if (Number.isFinite(ref)) parts.push('P2P ' + fmtNumber(ref, 2, s.uiLang));
   const g = gap(ref, bcb);
-  if (Number.isFinite(g)) parts.push('Brecha ' + fmtPercent(g));
-  return parts.length ? parts.join(' · ') : 'No se pudo actualizar. Abre la app para reintentar.';
+  if (Number.isFinite(g)) parts.push((en ? 'Gap ' : 'Brecha ') + fmtPercent(g, s.uiLang));
+  if (parts.length) return parts.join(' · ');
+  return en ? 'Could not update. Open the app to try again.' : 'No se pudo actualizar. Abre la app para reintentar.';
+}
+
+export function notificationTitle(settings) {
+  return settings && settings.uiLang === 'en' ? 'Cambista · today\'s exchange rate' : 'Cambista · tipo de cambio de hoy';
 }

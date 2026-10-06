@@ -3,7 +3,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { BackgroundRunner } from '@capacitor/background-runner';
-import { DEFAULT_SETTINGS } from './core/rates-core.js';
+import { DEFAULT_SETTINGS, pickLanguage } from './core/rates-core.js';
 
 export const RUNNER_LABEL = 'bo.cambista.app.daily';
 const MAX_HISTORY = 400;
@@ -80,10 +80,12 @@ export async function clearHistory() {
 
 // ---------- background runner bridge (Android only) ----------
 
+// The runner cannot see the phone's language, so the app sends the resolved one as uiLang.
 export async function syncRunnerSettings(settings) {
   if (!isNative()) return;
   try {
-    await BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'saveSettings', details: { settings } });
+    const withLang = { ...settings, uiLang: pickLanguage(settings.language, navigator.language) };
+    await BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'saveSettings', details: { settings: withLang } });
   } catch (e) {
     console.warn('runner saveSettings failed', e);
   }

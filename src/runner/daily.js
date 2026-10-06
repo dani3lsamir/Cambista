@@ -38,7 +38,7 @@ function notify(snapshot, settings) {
   CapacitorNotifications.schedule([
     {
       id: NOTIFICATION_ID,
-      title: 'Cambista · tipo de cambio de hoy',
+      title: notificationTitle(settings),
       body: notificationText(snapshot, settings),
     },
   ]);

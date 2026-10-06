@@ -11,7 +11,7 @@ Tipo de cambio del dólar en Bolivia, en el celular: **oficial del BCB** frente 
 | **Hoy** | Oficial BCB (con su vigencia), paralelo P2P (comprar, vender, promedio) y brecha = P2P / BCB − 1 |
 | **Calcular** | "Tengo dólares" o "Tengo bolivianos": cuánto recibes al oficial y en P2P, y la diferencia |
 | **Historial** | Un registro por día guardado en el celular, con gráfico de los últimos 30 días |
-| **Ajustes** | Actualización diaria (sí/no y hora), notificación, precio para la brecha, anuncios para la mediana, tema |
+| **Ajustes** | Actualización diaria (sí/no y hora), notificación, precio para la brecha, anuncios para la mediana, tema, idioma |
 
 ## De dónde salen los datos
 
@@ -19,6 +19,8 @@ Tipo de cambio del dólar en Bolivia, en el celular: **oficial del BCB** frente 
 |---|---|---|
 | Oficial | Página de inicio del [BCB](https://www.bcb.gob.bo/) ("Tipo de cambio oficial") | DolarApi `/v1/dolares/oficial` |
 | Paralelo | Binance P2P USDT/BOB: mediana de los primeros N anuncios de compra y de venta | [paralelo.bo](https://paralelo.bo/api) (datos CC BY 4.0), luego DolarApi |
+
+La app está en **español** y en **inglés**. En Ajustes → Idioma eliges Sistema (usa el idioma del celular), Español o English. En inglés los números usan punto decimal (12.40) y la notificación diaria también sale en inglés.
 
 En P2P, **comprar dólar** es lo que pagas por 1 USDT, y **vender dólar** es lo que te pagan.
 
@@ -49,6 +51,7 @@ src/core/rates-core.js   lógica pura: leer BCB y Binance, mediana, brecha, form
 src/runner/daily.js      tarea en segundo plano (Android la corre cada ~30 min, actualiza 1 vez al día)
 src/store.js             guardar ajustes e historial; hablar con la tarea en segundo plano
 src/main.js              pantallas y botones
+src/i18n.js              textos de la app en español e inglés
 src/styles.css           diseño (colores, tarjetas, barra inferior)
 scripts/build-runner.mjs junta rates-core + daily en public/runners/daily.js
 scripts/prepare-android.mjs  ajusta el proyecto Android que genera Capacitor
