@@ -9,7 +9,7 @@ text the user sees in the app is in Spanish (Bolivia) and English, kept in `src/
 
 Android app (Vite + vanilla JS + Capacitor 8). BCB official rate vs Binance P2P USDT/BOB, gap =
 P2P / BCB − 1, calculator, daily history, daily background update at a time set in Settings.
-Bank-by-bank rates are planned but NOT in scope yet.
+Bank-by-bank buying rates come from the BCB table (Bancos tab); a failure there never blocks BCB/P2P.
 
 ## Rules
 

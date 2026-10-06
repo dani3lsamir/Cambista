@@ -21,10 +21,11 @@ const AUTO_REFRESH_MS = 10 * 60 * 1000;
 const state = {
   tab: 'today',
   settings: null,
-  latest: { bcb: null, p2p: null },
+  latest: { bcb: null, p2p: null, banks: null },
   history: [],
   loading: false,
   errors: [],
+  banksError: null,
   calc: { dir: 'usd2bs', amount: '100' },
   sheet: null,
 };
@@ -97,6 +98,7 @@ function applyTheme() {
 const icon = {
   today: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   calc: '<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/>',
+  banks: '<path d="M3 9.5L12 4l9 5.5"/><path d="M5.5 10v7.5M10 10v7.5M14 10v7.5M18.5 10v7.5"/><path d="M3.5 20h17"/>',
   history: '<path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4 3 2.5L19 8"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
@@ -115,6 +117,7 @@ async function refresh({ silent = false } = {}) {
   state.latest = r.latest;
   state.history = r.history;
   state.errors = snap.errors;
+  state.banksError = snap.banksError;
   state.loading = false;
   render();
   if (!silent && !snap.errors.length) toast(t('updated'));
@@ -193,6 +196,8 @@ function screenToday() {
       </div>
     </section>
 
+    ${bankCard()}
+
     ${state.errors.length ? `<div class="notice err">${t('partialError')}<br><span style="color:var(--text-3)">${state.errors.map(esc).join('<br>')}</span></div>` : ''}
 
     <div class="status">
@@ -202,14 +207,69 @@ function screenToday() {
   </main>`;
 }
 
+// Small card on Today that opens the Banks tab
+function bankCard() {
+  const { banks } = state.latest;
+  if (!banks) return '';
+  const best = sortedBanks(banks)[0];
+  return `
+    <button class="card rate-card card-link" data-tab="banks">
+      <div class="rate-head">
+        <span class="rate-name">${t('banks')}</span>
+        <span class="rate-src">BCB ›</span>
+      </div>
+      <div class="rate-value num">${fmtNumber(banks.median)}<span class="rate-unit">Bs/USD ${t('medianShort')}</span></div>
+      ${best?.buy ? `<div class="rate-meta">${t('bestBank', { name: esc(best.name), rate: fmtNumber(best.buy) })}</div>` : ''}
+    </button>`;
+}
+
+// Highest price first; banks without trades at the end
+function sortedBanks(banks) {
+  return (banks?.banks || []).slice().sort((a, b) => (b.buy ?? -1) - (a.buy ?? -1));
+}
+
+function screenBanks() {
+  const { banks, p2p } = state.latest;
+  const list = sortedBanks(banks);
+  const bestBuy = list[0]?.buy;
+  const g = gap(p2p?.sell, banks?.median);
+  const explain = Number.isFinite(g)
+    ? t(g >= 0 ? 'p2pPaysMore' : 'bankPaysMore', { pct: fmtPercent(Math.abs(g)).replace('+', '') })
+    : '';
+  const rows = list.map((b) => {
+    const isBest = b.buy !== null && b.buy === bestBuy;
+    const sub = b.buy === null ? t('noTrades') : t(b.count === 1 ? 'bankVolumeOne' : 'bankVolume', { amount: fmtNumber(b.amount, 0), n: fmtNumber(b.count, 0) });
+    return `<div class="row"><div class="grow">${esc(b.name)}${isBest ? ` <span class="badge">${t('best')}</span>` : ''}<div class="sub num">${sub}</div></div><div class="end num ${isBest ? 'strong' : ''}">${fmtNumber(b.buy)}</div></div>`;
+  }).join('');
+  return `
+  <main class="screen">
+    <div class="title-row"><div><h1 class="title">${t('banks')}</h1><p class="subtitle">${t('banksSubtitle')}</p></div></div>
+    ${state.banksError ? `<div class="notice err">${t('banksError')}<br><span style="color:var(--text-3)">${esc(state.banksError)}</span></div><div style="height:12px"></div>` : ''}
+    ${banks ? `
+    <section class="hero">
+      <div class="label">${t('banksMedian')}</div>
+      <div class="big num">${fmtNumber(banks.median)}<span class="rate-unit">Bs/USD</span></div>
+      <div class="explain">${explain}</div>
+    </section>
+    <div class="section-label">${t('bankList')}</div>
+    <section class="card">${rows}</section>
+    <p class="footnote">${t('banksNote')}${banks.date ? '<br>' + t('banksDate', { date: esc(banks.date) }) : ''}<br>${t('checked', { ago: ago(banks.at) })}</p>`
+    : `<div class="card empty">${t('noBanksYet')}</div>`}
+  </main>`;
+}
+
 function calcResults() {
-  const { bcb, p2p } = state.latest;
+  const { bcb, p2p, banks } = state.latest;
   const amount = parseAmount(state.calc.amount);
   if (state.calc.dir === 'usd2bs') {
     const atBcb = amount * (bcb?.rate ?? NaN);
     const atP2p = amount * (p2p?.sell ?? NaN);
+    const bankRow = banks?.median
+      ? `<div class="row"><div class="grow">${t('sellingBank')}<div class="sub num">${t('perDollarMedian', { rate: fmtNumber(banks.median) })}</div></div><div class="end strong num">Bs ${fmtNumber(amount * banks.median)}</div></div>`
+      : '';
     return `
       <div class="row"><div class="grow">${t('atOfficial')}<div class="sub num">${t('perDollar', { rate: fmtNumber(bcb?.rate) })}</div></div><div class="end strong num">Bs ${fmtNumber(atBcb)}</div></div>
+      ${bankRow}
       <div class="row"><div class="grow">${t('sellingP2p')}<div class="sub num">${t('perDollar', { rate: fmtNumber(p2p?.sell) })}</div></div><div class="end strong num">Bs ${fmtNumber(atP2p)}</div></div>
       <div class="row"><div class="grow">${t('difference')}</div><div class="end num">Bs ${fmtNumber(atP2p - atBcb)}</div></div>`;
   }
@@ -322,6 +382,7 @@ function screenSettings() {
     <section class="card">
       <div class="row"><div class="grow">${t('version')}</div><div class="end">${esc(VERSION)}</div></div>
       <div class="row"><div class="grow">${t('officialSrc')}<div class="sub">${t('officialSrcSub')}</div></div></div>
+      <div class="row"><div class="grow">${t('banksSrc')}<div class="sub">${t('banksSrcSub')}</div></div></div>
       <div class="row"><div class="grow">${t('parallelSrc')}<div class="sub">Binance P2P, USDT/BOB</div></div></div>
       <div class="row"><div class="grow">${t('backupSrc')}<div class="sub">${t('backupSrcSub')}</div></div></div>
     </section>
@@ -345,12 +406,12 @@ function sheet() {
 }
 
 function tabbar() {
-  const tabs = [['today', t('today')], ['calc', t('calc')], ['history', t('history')], ['settings', t('settings')]];
+  const tabs = [['today', t('today')], ['calc', t('calc')], ['banks', t('banks')], ['history', t('history')], ['settings', t('settings')]];
   return `<nav class="tabbar"><div class="tabbar-inner">${tabs.map(([k, l]) => `<button class="tab ${state.tab === k ? 'on' : ''}" data-tab="${k}">${svg(k === 'today' ? 'today' : k)}${l}</button>`).join('')}</div></nav>`;
 }
 
 function render() {
-  const screens = { today: screenToday, calc: screenCalc, history: screenHistory, settings: screenSettings };
+  const screens = { today: screenToday, calc: screenCalc, banks: screenBanks, history: screenHistory, settings: screenSettings };
   const scroll = window.scrollY;
   root.innerHTML = screens[state.tab]() + tabbar() + sheet();
   window.scrollTo(0, scroll);

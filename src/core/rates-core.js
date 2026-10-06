@@ -10,6 +10,7 @@
 
 export const SOURCES = {
   bcb: 'https://www.bcb.gob.bo/',
+  bcbBanks: 'https://www.bcb.gob.bo/bcb_tco_publico_ultima_cotizacion.php',
   binance: 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search',
   dolarapiOficial: 'https://bo.dolarapi.com/v1/dolares/oficial',
   dolarapiBinance: 'https://bo.dolarapi.com/v1/dolares/binance',
@@ -50,8 +51,8 @@ export function htmlToText(html) {
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
-    .replace(/&aacute;/gi, 'á').replace(/&eacute;/gi, 'é').replace(/&iacute;/gi, 'í')
-    .replace(/&oacute;/gi, 'ó').replace(/&uacute;/gi, 'ú').replace(/&ntilde;/gi, 'ñ')
+    .replace(/&aacute;/g, 'á').replace(/&eacute;/g, 'é').replace(/&iacute;/g, 'í')
+    .replace(/&oacute;/g, 'ó').replace(/&uacute;/g, 'ú').replace(/&ntilde;/g, 'ñ')
     .replace(/&Aacute;/g, 'Á').replace(/&Eacute;/g, 'É').replace(/&Iacute;/g, 'Í')
     .replace(/&Oacute;/g, 'Ó').replace(/&Uacute;/g, 'Ú').replace(/&Ntilde;/g, 'Ñ')
     .replace(/&amp;/gi, '&')
@@ -77,6 +78,59 @@ export function parseBcbHome(html) {
     rate,
     validity: validityMatch ? capitalizeFirst(validityMatch[1].toLowerCase()) : null,
   };
+}
+
+// "8.952.427" -> 8952427 ; "-" -> NaN
+export function parseLocaleInt(text) {
+  const s = String(text == null ? '' : text).replace(/[\s.]/g, '');
+  return /^\d+$/.test(s) ? Number(s) : NaN;
+}
+
+// Median where each price counts as much as the dollars traded at it.
+export function weightedMedian(items) {
+  const list = items.filter((i) => Number.isFinite(i.value) && i.weight > 0).sort((a, b) => a.value - b.value);
+  const total = list.reduce((sum, i) => sum + i.weight, 0);
+  let acc = 0;
+  for (const i of list) {
+    acc += i.weight;
+    if (acc >= total / 2) return i.value;
+  }
+  return NaN;
+}
+
+// Reads the BCB table of what each bank pays to buy dollars.
+// Columns on 2026-10-06: Entidad | Compra (Bs/$us) | Monto ($us) | Número de transacciones,
+// then a TOTALES row and "BANCOS (MEDIANA PONDERADA POR MONTO)". Banks without trades show "-".
+export function parseBcbBanks(html) {
+  const rowsHtml = String(html).match(/<tr[\s\S]*?<\/tr>/gi) || [];
+  const banks = [];
+  let median = NaN;
+  for (const tr of rowsHtml) {
+    const cells = (tr.match(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi) || []).map(htmlToText);
+    if (cells.length < 2 || !cells[0]) continue;
+    const name = cells[0];
+    if (/mediana/i.test(name)) {
+      const m = cells.slice(1).map(parseLocaleNumber).find(isPlausibleRate);
+      if (m) median = m;
+      continue;
+    }
+    if (/^(totales?|entidad)/i.test(name)) continue;
+    const buy = parseLocaleNumber(cells[1]);
+    const noTrades = /^[-–—]?$/.test(cells[1]);
+    if (!isPlausibleRate(buy) && !noTrades) continue;
+    banks.push({
+      name,
+      buy: isPlausibleRate(buy) ? buy : null,
+      amount: Number.isFinite(parseLocaleInt(cells[2])) ? parseLocaleInt(cells[2]) : null,
+      count: Number.isFinite(parseLocaleInt(cells[3])) ? parseLocaleInt(cells[3]) : null,
+    });
+  }
+  if (!banks.some((b) => b.buy !== null)) throw new Error('Bancos: no se encontró la tabla del BCB');
+  if (!isPlausibleRate(median)) {
+    median = weightedMedian(banks.map((b) => ({ value: b.buy, weight: b.amount || 0 })));
+  }
+  const dateMatch = htmlToText(html).match(/\b(\d{1,2}\/\d{1,2}\/\d{4})\b/);
+  return { median: isPlausibleRate(median) ? median : null, banks, date: dateMatch ? dateMatch[1] : null };
 }
 
 export function capitalizeFirst(s) {
@@ -165,6 +219,11 @@ export async function fetchBcb(fetchFn) {
   }
 }
 
+export async function fetchBanks(fetchFn) {
+  const html = await getText(fetchFn, SOURCES.bcbBanks, { method: 'GET', headers: { Accept: 'text/html' } });
+  return Object.assign(parseBcbBanks(html), { source: 'BCB' });
+}
+
 export async function fetchBinanceSide(fetchFn, tradeType, rows) {
   const json = await getJson(fetchFn, SOURCES.binance, {
     method: 'POST',
@@ -202,15 +261,18 @@ export async function fetchP2p(fetchFn, rows) {
 }
 
 // One full reading. Never throws: failures are reported per source.
+// Bank rates are extra: their error goes in banksError and does not count as a failed update.
 export async function fetchSnapshot(fetchFn, settings, now) {
   const s = Object.assign({}, DEFAULT_SETTINGS, settings || {});
   const at = now || new Date();
-  const [bcb, p2p] = await Promise.allSettled([fetchBcb(fetchFn), fetchP2p(fetchFn, s.adsCount)]);
+  const [bcb, p2p, banks] = await Promise.allSettled([fetchBcb(fetchFn), fetchP2p(fetchFn, s.adsCount), fetchBanks(fetchFn)]);
   return {
     at: at.toISOString(),
     day: localDay(at),
     bcb: bcb.status === 'fulfilled' ? bcb.value : null,
     p2p: p2p.status === 'fulfilled' ? p2p.value : null,
+    banks: banks.status === 'fulfilled' ? banks.value : null,
+    banksError: banks.status === 'rejected' ? String(banks.reason && banks.reason.message || banks.reason) : null,
     errors: [
       bcb.status === 'rejected' ? String(bcb.reason && bcb.reason.message || bcb.reason) : null,
       p2p.status === 'rejected' ? String(p2p.reason && p2p.reason.message || p2p.reason) : null,
