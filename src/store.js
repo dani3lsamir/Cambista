@@ -36,10 +36,9 @@ export async function saveSettings(settings) {
 }
 
 // Latest good value of each source, each with its own timestamp:
-// { bcb: {rate, validity, source, at}, p2p: {buy, sell, mid, count, source, at},
-//   banks: {median, banks: [{name, buy, amount, count}], date, source, at} }
+// { bcb: {rate, validity, source, at}, p2p: {buy, sell, mid, count, source, at} }
 export async function loadLatest() {
-  return Object.assign({ bcb: null, p2p: null, banks: null }, await read('latest', {}));
+  return Object.assign({ bcb: null, p2p: null }, await read('latest', {}));
 }
 
 export async function loadHistory() {
@@ -54,7 +53,6 @@ export async function applySnapshots(snapshots) {
     if (!s) continue;
     if (s.bcb && (!latest.bcb || latest.bcb.at <= s.at)) latest.bcb = { ...s.bcb, at: s.at };
     if (s.p2p && (!latest.p2p || latest.p2p.at <= s.at)) latest.p2p = { ...s.p2p, at: s.at };
-    if (s.banks && (!latest.banks || latest.banks.at <= s.at)) latest.banks = { ...s.banks, at: s.at };
     if (s.bcb || s.p2p) upsertDay(history, s);
   }
   history.sort((a, b) => (a.day < b.day ? -1 : 1));
@@ -94,11 +92,11 @@ export async function clearHistory() {
 }
 
 // Android: writes the file to the app's cache and opens the share menu (Drive, WhatsApp, Files…).
-// No storage permission needed. Browser: downloads the file.
+// No storage permission needed. Browser: downloads the file. `mime` is the file type (CSV by default).
 // Returns false if the user closed the share menu without picking an app.
-export async function shareFile(fileName, text, labels = {}) {
+export async function shareFile(fileName, text, labels = {}, mime = 'text/csv') {
   if (!isNative()) {
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+    const url = URL.createObjectURL(new Blob([text], { type: `${mime};charset=utf-8` }));
     const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);

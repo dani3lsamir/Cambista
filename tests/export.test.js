@@ -1,7 +1,9 @@
 // Copyright (C) 2026 dani3lsamir
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from 'vitest';
-import { historyToCsv, exportFileName, parseHistoryCsv } from '../src/core/export.js';
+import {
+  historyToCsv, exportFileName, parseHistoryCsv, settingsToJson, settingsFileName, parseSettingsJson,
+} from '../src/core/export.js';
 
 describe('history export', () => {
   it('writes a header and one row per day, oldest first, with comma decimals', () => {
@@ -62,5 +64,28 @@ describe('history import', () => {
   it('rejects files that are not a Cambista history', () => {
     expect(() => parseHistoryCsv('')).toThrow(/vacío/);
     expect(() => parseHistoryCsv('Nombre;Monto\nAna;10\n')).toThrow(/Cambista/);
+  });
+});
+
+describe('settings export and import', () => {
+  const settings = { autoUpdate: false, updateTime: '07:30', notify: true, gapSide: 'sell', adsCount: 20, theme: 'oled', language: 'en' };
+
+  it('reads back what settingsToJson writes', () => {
+    expect(parseSettingsJson(settingsToJson(settings))).toEqual(settings);
+  });
+
+  it('names the file with the day', () => {
+    expect(settingsFileName('2026-10-07')).toBe('cambista-ajustes-2026-10-07.json');
+  });
+
+  it('ignores invalid and unknown values', () => {
+    const file = JSON.stringify({ app: 'cambista', kind: 'settings', settings: { theme: 'neon', adsCount: 7, updateTime: '25:00', gapSide: 'buy', evil: 1 } });
+    expect(parseSettingsJson(file)).toEqual({ gapSide: 'buy' });
+  });
+
+  it('rejects files that are not Cambista settings', () => {
+    expect(() => parseSettingsJson('nope')).toThrow(/JSON/);
+    expect(() => parseSettingsJson('{"theme":"dark"}')).toThrow(/Cambista/);
+    expect(() => parseSettingsJson(JSON.stringify({ app: 'cambista', kind: 'settings', settings: { theme: 'neon' } }))).toThrow(/válidos/);
   });
 });

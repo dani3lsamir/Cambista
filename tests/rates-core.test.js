@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
-  fmtNumber, fmtPercent, notificationText, parseBcbBanks, parseLocaleInt, weightedMedian, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
+  fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -62,39 +62,6 @@ describe('Binance parser', () => {
   });
 });
 
-const BANKS_HTML = `<table class="tabla"><thead><tr><th>Entidad</th><th>Compra (Bs/$us)</th><th>Monto ($us)</th><th>N&uacute;mero de transacciones</th></tr></thead>
-<tbody><tr><td>BANCO BISA</td><td class="r"><b>12,03</b></td><td>8.952.427</td><td>221</td></tr>
-<tr><td>BANCO DE LA NACI&Oacute;N ARGENTINA</td><td>11,95</td><td>25.440</td><td>30</td></tr>
-<tr><td>BANCO PYME ECOFUTURO</td><td>-</td><td>-</td><td>-</td></tr>
-<tr><td>BANCO UNION</td><td>11,50</td><td>186.189</td><td>75</td></tr></tbody>
-<tfoot><tr><td>TOTALES</td><td></td><td>9.164.056</td><td>326</td></tr>
-<tr><td>BANCOS (MEDIANA PONDERADA POR MONTO)</td><td>11,97</td><td></td><td></td></tr></tfoot></table>
-<p>Fecha de la cotizaci&oacute;n: 06/10/2026</p>`;
-
-describe('bank table parser', () => {
-  it('reads each bank, the weighted median and the date', () => {
-    const r = parseBcbBanks(BANKS_HTML);
-    expect(r.banks).toHaveLength(4);
-    expect(r.banks[0]).toEqual({ name: 'BANCO BISA', buy: 12.03, amount: 8952427, count: 221 });
-    expect(r.banks[1].name).toBe('BANCO DE LA NACIÓN ARGENTINA');
-    expect(r.banks[2]).toEqual({ name: 'BANCO PYME ECOFUTURO', buy: null, amount: null, count: null });
-    expect(r.median).toBe(11.97);
-    expect(r.date).toBe('06/10/2026');
-  });
-  it('calculates the median when the page does not show it', () => {
-    const r = parseBcbBanks(BANKS_HTML.replace(/<tr><td>BANCOS \(MEDIANA[\s\S]*?<\/tr>/, ''));
-    expect(r.median).toBe(12.03); // BISA alone has more than half of the dollars
-  });
-  it('fails clearly when there is no table', () => {
-    expect(() => parseBcbBanks('<p>mantenimiento</p>')).toThrow(/Bancos/);
-  });
-  it('helpers', () => {
-    expect(parseLocaleInt('8.952.427')).toBe(8952427);
-    expect(parseLocaleInt('-')).toBeNaN();
-    expect(weightedMedian([{ value: 11, weight: 1 }, { value: 12, weight: 5 }, { value: 13, weight: 1 }])).toBe(12);
-  });
-});
-
 describe('fetchSnapshot', () => {
   it('combines BCB and both Binance sides', async () => {
     const fetchFn = async (url, opts) => {
@@ -114,21 +81,6 @@ describe('fetchSnapshot', () => {
     expect(s.p2p.sell).toBe(12.2);
     expect(s.p2p.mid).toBeCloseTo(12.4);
     expect(s.errors).toEqual([]);
-    // the bank table failed ("unexpected" URL) but that is not a failed update
-    expect(s.banks).toBeNull();
-    expect(s.banksError).toMatch(/unexpected/);
-  });
-
-  it('adds the bank table when it loads', async () => {
-    const fetchFn = async (url, opts) => {
-      if (url === SOURCES.bcbBanks) return res(BANKS_HTML);
-      if (url === SOURCES.bcb) return res(BCB_HTML);
-      return res(JSON.parse(opts.body).tradeType === 'BUY' ? ads([12.6]) : ads([12.2]));
-    };
-    const s = await fetchSnapshot(fetchFn, {}, new Date());
-    expect(s.banks.median).toBe(11.97);
-    expect(s.banks.source).toBe('BCB');
-    expect(s.banksError).toBeNull();
   });
 
   it('falls back to paralelo.bo and DolarApi, and normalises sides', async () => {

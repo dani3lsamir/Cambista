@@ -75,3 +75,41 @@ function parseDay(s) {
   const p = (n) => String(n).padStart(2, '0');
   return `${y}-${p(mo)}-${p(d)}`;
 }
+
+// ---- settings export and import (a small JSON file; the history has its own CSV) ----
+const SETTING_RULES = {
+  autoUpdate: (v) => typeof v === 'boolean',
+  updateTime: (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v),
+  notify: (v) => typeof v === 'boolean',
+  gapSide: (v) => ['mid', 'buy', 'sell'].includes(v),
+  adsCount: (v) => [5, 10, 20].includes(v),
+  theme: (v) => ['system', 'dark', 'oled', 'light'].includes(v),
+  language: (v) => ['system', 'es', 'en'].includes(v),
+};
+
+export function settingsToJson(settings) {
+  const out = {};
+  for (const k of Object.keys(SETTING_RULES)) if (SETTING_RULES[k](settings?.[k])) out[k] = settings[k];
+  return JSON.stringify({ app: 'cambista', kind: 'settings', settings: out }, null, 2) + '\n';
+}
+
+export function settingsFileName(day) {
+  return `cambista-ajustes-${day}.json`;
+}
+
+// Returns only the valid settings found in the file; unknown or invalid values are ignored.
+export function parseSettingsJson(text) {
+  let data;
+  try {
+    data = JSON.parse(String(text || '').replace(/^﻿/, ''));
+  } catch {
+    throw new Error('El archivo no es un JSON válido');
+  }
+  if (data?.app !== 'cambista' || data?.kind !== 'settings' || typeof data.settings !== 'object' || !data.settings) {
+    throw new Error('No es un archivo de ajustes de Cambista');
+  }
+  const settings = {};
+  for (const k of Object.keys(SETTING_RULES)) if (SETTING_RULES[k](data.settings[k])) settings[k] = data.settings[k];
+  if (!Object.keys(settings).length) throw new Error('El archivo no tiene ajustes válidos');
+  return settings;
+}

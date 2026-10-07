@@ -8,11 +8,8 @@ Meet Cambista: the US dollar exchange rate in Bolivia, on your phone. See the **
 📊 **OFFICIAL VS PARALLEL AT A GLANCE:**
 The Today screen shows the official rate from the Central Bank of Bolivia (with its validity dates), the P2P buy, sell and average prices, and the gap = P2P / BCB − 1, explained in plain words.
 
-🏦 **BANK BY BANK:**
-See what each Bolivian bank pays for your dollar, from the BCB's daily table: the price, the dollars traded and the number of trades, the best bank of the day and the weighted median, compared with selling on P2P.
-
 🧮 **BUILT-IN CALCULATOR:**
-Choose "I have dollars" or "I have bolivianos" and see what you get at the official rate, at the bank and on P2P, plus the difference. P2P uses the price you are paid when you sell and the price you pay when you buy.
+Choose "I have dollars" or "I have bolivianos" and see what you get at the official rate and on P2P, plus the difference. P2P uses the price you are paid when you sell and the price you pay when you buy.
 
 📈 **DAILY HISTORY & CHART:**
 One reading per day, saved on your phone, with a chart of the last 30 days and the gap for each day. Export it to CSV for Excel or Google Sheets, and import it back on a new phone.
@@ -26,23 +23,21 @@ If a main source fails, Cambista falls back to another one and tells you which s
 | Data | Main source | Other sources (if the main one fails) |
 |---|---|---|
 | Official dollar | Home page of the [BCB](https://www.bcb.gob.bo/) ("Tipo de cambio oficial") | DolarApi `/v1/dolares/oficial` |
-| Banks | [BCB](https://www.bcb.gob.bo/bcb_tco_publico_ultima_cotizacion.php): buying rate of each financial institution | — |
 | Parallel dollar | Binance P2P USDT/BOB: median of the first N buy and sell ads | [paralelo.bo](https://paralelo.bo/api) (data under CC BY 4.0), then DolarApi |
 
 🔐 **PRIVACY FIRST:**
 No accounts, no analytics, no location permission, no server. Your settings and history never leave your phone.
 
 🌐 **SPANISH & ENGLISH:**
-Use the phone's language or choose Español or English in Settings. Numbers and the daily notification follow the language you pick.
+Use the phone's language or choose Español or English in Settings. Numbers and the daily notification follow the language you pick. You can also export your settings to a file and import them on another phone.
 
 🌙 **CLEAN, MODERN DESIGN:**
-Dark, OLED (pure black) and light themes, or follow the system, large numbers that are easy to read, and a simple five-tab layout.
+Dark, OLED (pure black) and light themes, or follow the system, large numbers that are easy to read, and a simple three-tab layout (Today, Calculate, History) with Settings behind the gear on the Today screen.
 
 <div align="center">
-<img alt="Today screen" src="docs/screenshots/1_today.png" width="23%">
-<img alt="Banks screen" src="docs/screenshots/2_banks.png" width="23%">
-<img alt="Calculator screen" src="docs/screenshots/3_calculate.png" width="23%">
-<img alt="History screen" src="docs/screenshots/4_history.png" width="23%">
+<img alt="Today screen" src="docs/screenshots/1_today.png" width="30%">
+<img alt="Calculator screen" src="docs/screenshots/3_calculate.png" width="30%">
+<img alt="History screen" src="docs/screenshots/4_history.png" width="30%">
 </div>
 <p align="center"><sub>Screenshots with sample data.</sub></p>
 
