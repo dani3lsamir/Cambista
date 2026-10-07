@@ -32,12 +32,13 @@ No accounts, no analytics, no location permission, no server. Your settings and 
 Use the phone's language or choose Español or English in Settings. Numbers and the daily notification follow the language you pick. You can also export your settings to a file and import them on another phone.
 
 🌙 **CLEAN, MODERN DESIGN:**
-Dark, OLED (pure black) and light themes, or follow the system, large numbers that are easy to read, and a simple three-tab layout (Today, Calculate, History) with Settings behind the gear on the Today screen.
+Dark (pure black, easy on OLED screens) and light themes, or follow the system, large numbers that are easy to read, and a simple three-tab layout (Today, Calculate, History) with Settings behind the gear on the Today screen.
 
 <div align="center">
-<img alt="Today screen" src="docs/screenshots/1_today.png" width="30%">
-<img alt="Calculator screen" src="docs/screenshots/3_calculate.png" width="30%">
-<img alt="History screen" src="docs/screenshots/4_history.png" width="30%">
+<img alt="Today screen" src="docs/screenshots/1_today.png" width="23%">
+<img alt="Calculator screen" src="docs/screenshots/2_calculate.png" width="23%">
+<img alt="History screen" src="docs/screenshots/3_history.png" width="23%">
+<img alt="Settings screen" src="docs/screenshots/4_settings.png" width="23%">
 </div>
 <p align="center"><sub>Screenshots with sample data.</sub></p>
 
