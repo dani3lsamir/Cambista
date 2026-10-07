@@ -68,7 +68,7 @@ describe('history import', () => {
 });
 
 describe('settings export and import', () => {
-  const settings = { autoUpdate: false, updateTime: '07:30', notify: true, gapSide: 'sell', adsCount: 20, theme: 'oled', language: 'en' };
+  const settings = { autoUpdate: false, updateTime: '07:30', notify: true, gapSide: 'sell', adsCount: 20, theme: 'dark', language: 'en' };
 
   it('reads back what settingsToJson writes', () => {
     expect(parseSettingsJson(settingsToJson(settings))).toEqual(settings);
@@ -81,6 +81,11 @@ describe('settings export and import', () => {
   it('ignores invalid and unknown values', () => {
     const file = JSON.stringify({ app: 'cambista', kind: 'settings', settings: { theme: 'neon', adsCount: 7, updateTime: '25:00', gapSide: 'buy', evil: 1 } });
     expect(parseSettingsJson(file)).toEqual({ gapSide: 'buy' });
+  });
+
+  it('reads the old oled theme as dark', () => {
+    const file = JSON.stringify({ app: 'cambista', kind: 'settings', settings: { theme: 'oled' } });
+    expect(parseSettingsJson(file)).toEqual({ theme: 'dark' });
   });
 
   it('rejects files that are not Cambista settings', () => {

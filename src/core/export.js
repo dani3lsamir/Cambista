@@ -83,7 +83,7 @@ const SETTING_RULES = {
   notify: (v) => typeof v === 'boolean',
   gapSide: (v) => ['mid', 'buy', 'sell'].includes(v),
   adsCount: (v) => [5, 10, 20].includes(v),
-  theme: (v) => ['system', 'dark', 'oled', 'light'].includes(v),
+  theme: (v) => ['system', 'dark', 'light'].includes(v),
   language: (v) => ['system', 'es', 'en'].includes(v),
 };
 
@@ -109,6 +109,7 @@ export function parseSettingsJson(text) {
     throw new Error('No es un archivo de ajustes de Cambista');
   }
   const settings = {};
+  if (data.settings.theme === 'oled') data.settings.theme = 'dark'; // old name of today's dark theme
   for (const k of Object.keys(SETTING_RULES)) if (SETTING_RULES[k](data.settings[k])) settings[k] = data.settings[k];
   if (!Object.keys(settings).length) throw new Error('El archivo no tiene ajustes válidos');
   return settings;

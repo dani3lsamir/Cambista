@@ -321,16 +321,8 @@ function screenSettings() {
     </section>
     <p class="footnote">${t('autoNote')}</p>
 
-    <div class="section-label">${t('parallelSection')}</div>
-    <section class="card pad">
-      <div style="margin-bottom:8px">${t('gapPrice')}</div>
-      ${seg('gapSide', [['mid', t('mid')], ['buy', t('buy')], ['sell', t('sell')]])}
-      <div style="margin:16px 0 8px">${t('adsForMedian')}</div>
-      ${seg('adsCount', [[5, '5'], [10, '10'], [20, '20']])}
-    </section>
-
     <div class="section-label">${t('appearance')}</div>
-    <section class="card pad">${seg('theme', [['system', t('system')], ['dark', t('dark')], ['oled', 'OLED'], ['light', t('light')]])}</section>
+    <section class="card pad">${seg('theme', [['system', t('system')], ['dark', t('dark')], ['light', t('light')]])}</section>
 
     <div class="section-label">${t('language')}</div>
     <section class="card pad">${seg('language', [['system', t('system')], ['es', 'Español'], ['en', 'English']])}</section>
@@ -347,12 +339,18 @@ function screenSettings() {
       <button class="row danger" data-action="ask-clear"><div class="grow">${t('clearHistory')}</div></button>
     </section>
 
+    <div class="section-label">${t('advanced')}</div>
+    <section class="card pad">
+      <div style="margin-bottom:8px">${t('gapPrice')}</div>
+      ${seg('gapSide', [['mid', t('mid')], ['buy', t('buy')], ['sell', t('sell')]])}
+      <div style="margin:16px 0 8px">${t('adsForMedian')}</div>
+      ${seg('adsCount', [[5, '5'], [10, '10'], [20, '20']])}
+    </section>
+
     <div class="section-label">${t('about')}</div>
     <section class="card">
       <div class="row"><div class="grow">${t('version')}</div><div class="end">${esc(VERSION)}</div></div>
-      <div class="row"><div class="grow">${t('officialSrc')}<div class="sub">${t('officialSrcSub')}</div></div></div>
-      <div class="row"><div class="grow">${t('parallelSrc')}<div class="sub">Binance P2P, USDT/BOB</div></div></div>
-      <div class="row"><div class="grow">${t('backupSrc')}<div class="sub">${t('backupSrcSub')}</div></div></div>
+      <div class="row"><div class="grow">${t('sources')}<div class="sub">${t('sourcesList')}</div></div></div>
     </section>
     <p class="footnote">${t('disclaimer')}<br>${t('rights')}</p>
   </main>`;

@@ -27,7 +27,9 @@ async function write(key, value) {
 }
 
 export async function loadSettings() {
-  return Object.assign({}, DEFAULT_SETTINGS, await read('settings', {}));
+  const saved = await read('settings', {});
+  if (saved.theme === 'oled') saved.theme = 'dark'; // the OLED theme became the only dark theme
+  return Object.assign({}, DEFAULT_SETTINGS, saved);
 }
 
 export async function saveSettings(settings) {

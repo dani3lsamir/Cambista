@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS = {
   notify: true,
   gapSide: 'mid', // 'mid' | 'buy' | 'sell'
   adsCount: 10,
-  theme: 'system', // 'system' | 'dark' | 'oled' | 'light'
+  theme: 'system', // 'system' | 'dark' | 'light'
   language: 'system', // 'system' | 'es' | 'en'
 };
 
