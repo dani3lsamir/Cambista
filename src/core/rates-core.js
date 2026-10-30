@@ -44,6 +44,30 @@ export function parseLocaleNumber(text) {
   return Number.isFinite(n) ? n : NaN;
 }
 
+// Amount typed by the user. Phone keyboards may offer "." or "," as the decimal key whatever the
+// app language, so a single separator followed by exactly 3 digits is read as thousands only when
+// it is the language's thousands separator ("." in Spanish, "," in English); otherwise it is the decimal point.
+// es: "100.50" -> 100.5 ; "1.000" -> 1000 ; "1.234,5" -> 1234.5   en: "1,000" -> 1000 ; "100,5" -> 100.5
+export function parseAmountInput(text, lang) {
+  const s = String(text == null ? '' : text).replace(/\s/g, '');
+  if (!/^\d*[.,]?[\d.,]*$/.test(s) || !/\d/.test(s)) return NaN;
+  const thousands = lang === 'en' ? ',' : '.';
+  let plain;
+  if (s.includes('.') && s.includes(',')) {
+    const dec = s.lastIndexOf('.') > s.lastIndexOf(',') ? '.' : ',';
+    const parts = s.split(dec);
+    if (parts.length !== 2) return NaN;
+    plain = parts[0].replace(/[.,]/g, '') + '.' + parts[1];
+  } else {
+    const sep = s.includes('.') ? '.' : s.includes(',') ? ',' : '';
+    const parts = sep ? s.split(sep) : [s];
+    if (parts.length > 2) plain = parts.join(''); // "1.000.000"
+    else if (parts.length === 2 && sep === thousands && parts[1].length === 3 && parts[0] !== '') plain = parts.join('');
+    else plain = parts.join('.');
+  }
+  return /^\d*\.?\d+$|^\d+\.$/.test(plain) ? Number(plain) : NaN;
+}
+
 export function htmlToText(html) {
   return String(html)
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')

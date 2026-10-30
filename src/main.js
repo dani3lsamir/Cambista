@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { App } from '@capacitor/app';
 import {
-  fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay,
+  fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay, parseAmountInput,
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
@@ -88,12 +88,8 @@ function sourceName(name) {
   return String(name).replace('(respaldo)', `(${t('backup')})`);
 }
 
-// Amount typed in the calculator: "1.234,5" in Spanish, "1,234.5" in English
-function parseAmount(text) {
-  const s = String(text).trim();
-  const plain = lang() === 'en' ? s.replace(/,/g, '') : s.replace(/\./g, '').replace(',', '.');
-  return plain === '' ? NaN : Number(plain);
-}
+// Amount typed in the calculator ("100.50" and "100,50" both work in either language)
+const parseAmount = (text) => parseAmountInput(text, lang());
 
 function toast(msg) {
   document.querySelector('.toast')?.remove();

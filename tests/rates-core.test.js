@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
+  parseAmountInput,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -31,6 +32,22 @@ describe('numbers', () => {
     expect(fmtNumber(1234.5, 2, 'en')).toBe('1,234.50');
     expect(fmtNumber(-3.2, 2, 'en')).toBe('−3.20');
     expect(fmtPercent(0.0375, 'en')).toBe('+3.8%');
+  });
+  it('reads amounts typed with either decimal key', () => {
+    expect(parseAmountInput('100.50', 'es')).toBe(100.5);
+    expect(parseAmountInput('100,50', 'es')).toBe(100.5);
+    expect(parseAmountInput('1.000', 'es')).toBe(1000);
+    expect(parseAmountInput('1.234,5', 'es')).toBe(1234.5);
+    expect(parseAmountInput('1.000.000', 'es')).toBe(1000000);
+    expect(parseAmountInput('100.50', 'en')).toBe(100.5);
+    expect(parseAmountInput('100,50', 'en')).toBe(100.5);
+    expect(parseAmountInput('1,000', 'en')).toBe(1000);
+    expect(parseAmountInput('1,234.5', 'en')).toBe(1234.5);
+    expect(parseAmountInput(' 250 ', 'es')).toBe(250);
+    expect(parseAmountInput('12.', 'es')).toBe(12);
+    expect(parseAmountInput('', 'es')).toBeNaN();
+    expect(parseAmountInput('abc', 'es')).toBeNaN();
+    expect(parseAmountInput('1,2,3.4.5', 'es')).toBeNaN();
   });
   it('median works for odd and even lists', () => {
     expect(median([3, 1, 2])).toBe(2);
