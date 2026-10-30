@@ -258,6 +258,37 @@ export function gap(p2pRate, bcbRate) {
   return p2pRate / bcbRate - 1;
 }
 
+// P2P price of one history day for the chosen side ('mid' | 'buy' | 'sell')
+export function historyValue(entry, side) {
+  if (!entry) return NaN;
+  const v = side === 'buy' ? entry.buy : side === 'sell' ? entry.sell : entry.mid;
+  return Number.isFinite(v) ? v : NaN;
+}
+
+export function addDays(day, n) {
+  const [y, m, d] = String(day).split('-').map(Number);
+  return localDay(new Date(y, m - 1, d + n));
+}
+
+// Today's P2P price against the previous `days` days of history (today itself is left out).
+// level: 'cheap' when it is lower than at least 75% of those days, 'expensive' when higher than
+// at least 75%, 'normal' otherwise, null with fewer than 3 days to compare.
+export function compareWithPast(value, history, side, today, days) {
+  const from = addDays(today, -days);
+  const past = (history || [])
+    .filter((h) => h && h.day >= from && h.day < today)
+    .map((h) => historyValue(h, side))
+    .filter(isPlausibleRate);
+  const n = past.length;
+  const lower = past.filter((v) => v > value).length; // days when the price was higher than today
+  const higher = past.filter((v) => v < value).length; // days when the price was lower than today
+  let level = null;
+  if (isPlausibleRate(value) && n >= 3) {
+    level = lower / n >= 0.75 ? 'cheap' : higher / n >= 0.75 ? 'expensive' : 'normal';
+  }
+  return { n, lower, higher, level };
+}
+
 export function localDay(date) {
   const d = date || new Date();
   const p = (n) => String(n).padStart(2, '0');

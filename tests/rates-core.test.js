@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
-  parseAmountInput,
+  parseAmountInput, compareWithPast, historyValue, addDays,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -168,5 +168,33 @@ describe('daily schedule', () => {
   });
   it('respects the switch', () => {
     expect(isDue({ autoUpdate: false, updateTime: '00:00' }, null, at(12, 0))).toBe(false);
+  });
+});
+
+describe('compare with past days', () => {
+  const days = [12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9].map((mid, i) => ({
+    day: addDays('2026-10-01', i), mid, buy: mid + 0.05, sell: mid - 0.05,
+  }));
+  it('adds days across months', () => {
+    expect(addDays('2026-10-30', 3)).toBe('2026-11-02');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+  });
+  it('picks the side of a history day', () => {
+    expect(historyValue(days[0], 'buy')).toBeCloseTo(12.35);
+    expect(historyValue(days[0], 'mid')).toBe(12.3);
+    expect(historyValue({ day: 'x' }, 'sell')).toBeNaN();
+  });
+  it('says cheap, expensive or normal', () => {
+    expect(compareWithPast(12.2, days, 'mid', '2026-10-08', 7)).toEqual({ n: 7, lower: 7, higher: 0, level: 'cheap' });
+    expect(compareWithPast(13, days, 'mid', '2026-10-08', 7).level).toBe('expensive');
+    expect(compareWithPast(12.6, days, 'mid', '2026-10-08', 7).level).toBe('normal');
+  });
+  it('leaves out today and days outside the window', () => {
+    const withToday = [...days, { day: '2026-10-08', mid: 99 }];
+    expect(compareWithPast(12.85, withToday, 'mid', '2026-10-08', 2)).toMatchObject({ n: 2, lower: 1, higher: 1 });
+  });
+  it('needs at least 3 days', () => {
+    expect(compareWithPast(12.2, days.slice(-2), 'mid', '2026-10-08', 7).level).toBeNull();
+    expect(compareWithPast(NaN, days, 'mid', '2026-10-08', 7).level).toBeNull();
   });
 });

@@ -4,6 +4,7 @@
 import { App } from '@capacitor/app';
 import {
   fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay, parseAmountInput,
+  compareWithPast,
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
@@ -186,6 +187,8 @@ function screenToday() {
       <div class="explain">${explain}</div>
     </section>
 
+    ${pastCard(ref, side)}
+
     <div class="section-label">${t('rates')}</div>
     <section class="card rate-card">
       <div class="rate-head">
@@ -217,6 +220,24 @@ function screenToday() {
       ${lastAt ? t('lastUpdate', { time: clock(lastAt), ago: ago(lastAt) }) : t('firstRefresh')}
     </div>
   </main>`;
+}
+
+// Today's P2P price against the last 7 and 30 days of history ("is it cheap today?")
+function pastCard(ref, side) {
+  const today = localDay(new Date());
+  const week = compareWithPast(ref, state.history, side, today, 7);
+  const month = compareWithPast(ref, state.history, side, today, 30);
+  const windows = [[week, t('last7')], ...(month.n > week.n ? [[month, t('last30')]] : [])].filter(([c]) => c.level);
+  if (!windows.length) return '';
+  const rows = windows.map(([c, label]) => {
+    const what = c.lower >= c.higher ? t('lowerThan', { k: c.lower, n: c.n }) : t('higherThan', { k: c.higher, n: c.n });
+    const cls = c.level === 'cheap' ? 'down' : c.level === 'expensive' ? 'up' : '';
+    return `<div class="row"><div class="grow">${label}<div class="sub">${what}</div></div><div class="end strong ${cls}">${t(c.level)}</div></div>`;
+  }).join('');
+  return `
+    <div class="section-label">${t('vsPast')}</div>
+    <section class="card">${rows}</section>
+    <p class="footnote">${t('levelNote')}</p>`;
 }
 
 function calcResults() {
