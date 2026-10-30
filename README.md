@@ -6,7 +6,7 @@
 Meet Cambista: the US dollar exchange rate in Bolivia, on your phone. See the **official BCB rate** next to the **parallel P2P rate (USDT on Binance)**, the **gap** between them, and a calculator that tells you how much you really get. It updates itself once a day, at the time you choose, and sends you a notification.
 
 📊 **OFFICIAL VS PARALLEL AT A GLANCE:**
-The Today screen shows the official rate from the Central Bank of Bolivia (with its validity dates), the P2P buy, sell and average prices, and the gap = P2P / BCB − 1, explained in plain words.
+The Today screen shows the official rate from the Central Bank of Bolivia (with its validity dates), the P2P buy, sell and average prices, and the gap = P2P / BCB − 1, explained in plain words. It also shows how much each rate moved since yesterday and whether today's P2P price is cheap or expensive compared with the last 7 and 30 days.
 
 🧮 **BUILT-IN CALCULATOR:**
 Choose "I have dollars" or "I have bolivianos" and see what you get at the official rate and on P2P, plus the difference. P2P uses the price you are paid when you sell and the price you pay when you buy.
