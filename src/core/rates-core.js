@@ -270,6 +270,13 @@ export function addDays(day, n) {
   return localDay(new Date(y, m - 1, d + n));
 }
 
+// Latest history day before `today` (usually yesterday), or null
+export function lastDayBefore(history, today) {
+  let best = null;
+  for (const h of history || []) if (h && h.day < today && (!best || h.day > best.day)) best = h;
+  return best;
+}
+
 // Today's P2P price against the previous `days` days of history (today itself is left out).
 // level: 'cheap' when it is lower than at least 75% of those days, 'expensive' when higher than
 // at least 75%, 'normal' otherwise, null with fewer than 3 days to compare.

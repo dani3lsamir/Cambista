@@ -150,6 +150,8 @@ button.row:disabled { opacity: 0.45; }
 .row.danger { color: var(--error); }
 .row .end.up { color: var(--up); }
 .row .end.down { color: var(--down); }
+.rate-meta.up { color: var(--up); }
+.rate-meta.down { color: var(--down); }
 
 /* ---------- controls ---------- */
 .segmented { display: flex; background: var(--control); border-radius: 10px; padding: 2px; gap: 2px; }

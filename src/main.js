@@ -4,7 +4,7 @@
 import { App } from '@capacitor/app';
 import {
   fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay, parseAmountInput,
-  compareWithPast,
+  compareWithPast, lastDayBefore, addDays,
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
@@ -196,6 +196,7 @@ function screenToday() {
         <span class="rate-src">${esc(sourceName(bcb?.source || 'BCB'))}</span>
       </div>
       <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/USD</span></div>
+      ${sinceLastDay(bcb?.rate, 'bcb')}
       <div class="rate-meta">${bcb?.validity ? t('validFor', { date: esc(validityText(bcb.validity)) }) : t('officialAbout')}</div>
       <div class="rate-meta">${bcb ? t('checked', { ago: ago(bcb.at) }) : t('noData')}</div>
     </section>
@@ -206,6 +207,7 @@ function screenToday() {
         <span class="rate-src">${esc(sourceName(p2p?.source || 'Binance P2P'))}</span>
       </div>
       <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD ${t('average')}</span></div>
+      ${sinceLastDay(p2p?.mid, 'mid')}
       <div class="rate-meta">${p2p ? (p2p.count ? t('medianOf', { n: p2p.count }) : '') + t('checkedLower', { ago: ago(p2p.at) }) : t('noData')}</div>
       <div class="split">
         <div><div class="k">${t('buyDollar')}</div><div class="v num">${fmtNumber(p2p?.buy)}</div></div>
@@ -220,6 +222,18 @@ function screenToday() {
       ${lastAt ? t('lastUpdate', { time: clock(lastAt), ago: ago(lastAt) }) : t('firstRefresh')}
     </div>
   </main>`;
+}
+
+// "+0,05 Bs since yesterday" under a rate; `key` is the history field ('bcb' or 'mid')
+function sinceLastDay(value, key) {
+  const today = localDay(new Date());
+  const prev = lastDayBefore(state.history, today);
+  const before = prev?.[key];
+  if (!Number.isFinite(value) || !Number.isFinite(before)) return '';
+  const diff = Math.round((value - before) * 100) / 100;
+  const when = prev.day === addDays(today, -1) ? t('sinceYesterday') : t('sinceDay', { day: esc(prettyDay(prev.day)) });
+  const text = diff === 0 ? t('sameAs', { when }) : `${diff > 0 ? '+' : ''}${fmtNumber(diff)} Bs ${when}`;
+  return `<div class="rate-meta num ${diff > 0 ? 'up' : diff < 0 ? 'down' : ''}">${text}</div>`;
 }
 
 // Today's P2P price against the last 7 and 30 days of history ("is it cheap today?")

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
-  parseAmountInput, compareWithPast, historyValue, addDays,
+  parseAmountInput, compareWithPast, historyValue, addDays, lastDayBefore,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -192,6 +192,12 @@ describe('compare with past days', () => {
   it('leaves out today and days outside the window', () => {
     const withToday = [...days, { day: '2026-10-08', mid: 99 }];
     expect(compareWithPast(12.85, withToday, 'mid', '2026-10-08', 2)).toMatchObject({ n: 2, lower: 1, higher: 1 });
+  });
+  it('finds the latest day before today', () => {
+    const h = [{ day: '2026-10-07' }, { day: '2026-10-05' }, { day: '2026-10-08' }];
+    expect(lastDayBefore(h, '2026-10-08').day).toBe('2026-10-07');
+    expect(lastDayBefore(h, '2026-10-05')).toBeNull();
+    expect(lastDayBefore([], '2026-10-05')).toBeNull();
   });
   it('needs at least 3 days', () => {
     expect(compareWithPast(12.2, days.slice(-2), 'mid', '2026-10-08', 7).level).toBeNull();
