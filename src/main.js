@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { App } from '@capacitor/app';
 import {
-  fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay,
+  fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay, parseAmountInput,
+  compareWithPast, lastDayBefore, addDays, fetchPriceForAmount,
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
@@ -27,7 +28,7 @@ const state = {
   history: [],
   loading: false,
   errors: [],
-  calc: { dir: 'usd2bs', amount: '100' },
+  calc: { dir: 'usd2bs', amount: '100', live: null }, // live: { key, loading, result, failed }
   sheet: null,
 };
 
@@ -88,12 +89,8 @@ function sourceName(name) {
   return String(name).replace('(respaldo)', `(${t('backup')})`);
 }
 
-// Amount typed in the calculator: "1.234,5" in Spanish, "1,234.5" in English
-function parseAmount(text) {
-  const s = String(text).trim();
-  const plain = lang() === 'en' ? s.replace(/,/g, '') : s.replace(/\./g, '').replace(',', '.');
-  return plain === '' ? NaN : Number(plain);
-}
+// Amount typed in the calculator ("100.50" and "100,50" both work in either language)
+const parseAmount = (text) => parseAmountInput(text, lang());
 
 function toast(msg) {
   document.querySelector('.toast')?.remove();
@@ -190,6 +187,8 @@ function screenToday() {
       <div class="explain">${explain}</div>
     </section>
 
+    ${pastCard(ref, side)}
+
     <div class="section-label">${t('rates')}</div>
     <section class="card rate-card">
       <div class="rate-head">
@@ -197,6 +196,7 @@ function screenToday() {
         <span class="rate-src">${esc(sourceName(bcb?.source || 'BCB'))}</span>
       </div>
       <div class="rate-value num">${fmtNumber(bcb?.rate)}<span class="rate-unit">Bs/USD</span></div>
+      ${sinceLastDay(bcb?.rate, 'bcb')}
       <div class="rate-meta">${bcb?.validity ? t('validFor', { date: esc(validityText(bcb.validity)) }) : t('officialAbout')}</div>
       <div class="rate-meta">${bcb ? t('checked', { ago: ago(bcb.at) }) : t('noData')}</div>
     </section>
@@ -207,6 +207,7 @@ function screenToday() {
         <span class="rate-src">${esc(sourceName(p2p?.source || 'Binance P2P'))}</span>
       </div>
       <div class="rate-value num">${fmtNumber(p2p?.mid)}<span class="rate-unit">Bs/USD ${t('average')}</span></div>
+      ${sinceLastDay(p2p?.mid, 'mid')}
       <div class="rate-meta">${p2p ? (p2p.count ? t('medianOf', { n: p2p.count }) : '') + t('checkedLower', { ago: ago(p2p.at) }) : t('noData')}</div>
       <div class="split">
         <div><div class="k">${t('buyDollar')}</div><div class="v num">${fmtNumber(p2p?.buy)}</div></div>
@@ -221,6 +222,36 @@ function screenToday() {
       ${lastAt ? t('lastUpdate', { time: clock(lastAt), ago: ago(lastAt) }) : t('firstRefresh')}
     </div>
   </main>`;
+}
+
+// "+0,05 Bs since yesterday" under a rate; `key` is the history field ('bcb' or 'mid')
+function sinceLastDay(value, key) {
+  const today = localDay(new Date());
+  const prev = lastDayBefore(state.history, today);
+  const before = prev?.[key];
+  if (!Number.isFinite(value) || !Number.isFinite(before)) return '';
+  const diff = Math.round((value - before) * 100) / 100;
+  const when = prev.day === addDays(today, -1) ? t('sinceYesterday') : t('sinceDay', { day: esc(prettyDay(prev.day)) });
+  const text = diff === 0 ? t('sameAs', { when }) : `${diff > 0 ? '+' : ''}${fmtNumber(diff)} Bs ${when}`;
+  return `<div class="rate-meta num ${diff > 0 ? 'up' : diff < 0 ? 'down' : ''}">${text}</div>`;
+}
+
+// Today's P2P price against the last 7 and 30 days of history ("is it cheap today?")
+function pastCard(ref, side) {
+  const today = localDay(new Date());
+  const week = compareWithPast(ref, state.history, side, today, 7);
+  const month = compareWithPast(ref, state.history, side, today, 30);
+  const windows = [[week, t('last7')], ...(month.n > week.n ? [[month, t('last30')]] : [])].filter(([c]) => c.level);
+  if (!windows.length) return '';
+  const rows = windows.map(([c, label]) => {
+    const what = c.lower >= c.higher ? t('lowerThan', { k: c.lower, n: c.n }) : t('higherThan', { k: c.higher, n: c.n });
+    const cls = c.level === 'cheap' ? 'down' : c.level === 'expensive' ? 'up' : '';
+    return `<div class="row"><div class="grow">${label}<div class="sub">${what}</div></div><div class="end strong ${cls}">${t(c.level)}</div></div>`;
+  }).join('');
+  return `
+    <div class="section-label">${t('vsPast')}</div>
+    <section class="card">${rows}</section>
+    <p class="footnote">${t('levelNote')}</p>`;
 }
 
 function calcResults() {
@@ -242,6 +273,60 @@ function calcResults() {
     <div class="row"><div class="grow">${t('difference')}</div><div class="end num">USD ${fmtNumber(atP2p - atBcb)}</div></div>`;
 }
 
+// Bs amount of the trade the calculator describes: what you pay (buying) or roughly what you get (selling)
+function calcFiatAmount() {
+  const amount = parseAmount(state.calc.amount);
+  if (state.calc.dir === 'bs2usd') return amount;
+  const rate = state.latest.p2p?.sell ?? state.latest.bcb?.rate;
+  return amount * (rate ?? NaN);
+}
+
+const liveKey = () => `${state.calc.dir}|${parseAmount(state.calc.amount)}`;
+
+// "Price for my amount": Binance ads whose minimum and maximum accept this trade
+function calcLive() {
+  const live = state.calc.live?.key === liveKey() ? state.calc.live : null;
+  const usd = state.calc.dir === 'usd2bs';
+  if (!live || (!live.loading && !live.result && !live.failed)) {
+    const ok = Number.isFinite(calcFiatAmount()) && calcFiatAmount() > 0;
+    return `<button class="row" data-action="live-price" ${ok ? '' : 'disabled'}><div class="grow">${t('livePrice')}<div class="sub">${t('livePriceWhat')}</div></div><div class="end">${svg('refresh', 18)}</div></button>`;
+  }
+  if (live.loading) return `<div class="row"><div class="grow">${t('livePrice')}<div class="sub">${t('liveLoading')}</div></div><div class="end"><span class="spin"></span></div></div>`;
+  if (live.failed) return `<button class="row" data-action="live-price"><div class="grow">${t('livePrice')}<div class="sub">${t('liveFailed')}</div></div><div class="end">${svg('refresh', 18)}</div></button>`;
+  const r = live.result;
+  if (!r.count) return `<div class="row"><div class="grow">${t('livePrice')}<div class="sub">${t('liveNone')}</div></div></div>`;
+  const amount = parseAmount(state.calc.amount);
+  const got = usd ? `Bs ${fmtNumber(amount * r.median)}` : `USD ${fmtNumber(amount / r.median)}`;
+  const accepted = r.total ? t(r.total === 1 ? 'liveAdsOne' : 'liveAdsMany', { n: r.total }) : '';
+  return `
+    <div class="row"><div class="grow">${usd ? t('liveSelling') : t('liveBuying')}<div class="sub num">${t('perDollar', { rate: fmtNumber(r.median) })} · ${t('liveMedianOf', { n: r.count })}</div></div><div class="end strong num">${got}</div></div>
+    <div class="row"><div class="grow">${t('liveBest')}<div class="sub">${accepted}</div></div><div class="end num">${fmtNumber(r.best)}</div></div>`;
+}
+
+async function loadLivePrice() {
+  const key = liveKey();
+  const fiat = calcFiatAmount();
+  if (!(fiat > 0)) return;
+  state.calc.live = { key, loading: true };
+  renderCalcBoxes();
+  const fetchFn = DEMO ? demoFetch : (url, opts) => fetch(url, opts);
+  let next;
+  try {
+    next = { key, result: await fetchPriceForAmount(fetchFn, state.calc.dir === 'usd2bs' ? 'SELL' : 'BUY', fiat) };
+  } catch {
+    next = { key, failed: true };
+  }
+  if (state.calc.live?.key === key) state.calc.live = next; // the amount may have changed meanwhile
+  renderCalcBoxes();
+}
+
+function renderCalcBoxes() {
+  const box = document.getElementById('calc-results');
+  if (box) box.innerHTML = calcResults();
+  const live = document.getElementById('calc-live');
+  if (live) live.innerHTML = calcLive();
+}
+
 function screenCalc() {
   const usd = state.calc.dir === 'usd2bs';
   return `
@@ -257,6 +342,8 @@ function screenCalc() {
     </section>
     <div class="section-label">${usd ? t('getBs') : t('getUsd')}</div>
     <section class="card" id="calc-results">${calcResults()}</section>
+    <div class="section-label">${t('liveTitle')}</div>
+    <section class="card" id="calc-live">${calcLive()}</section>
     <p class="footnote">${t('calcNote')}</p>
   </main>`;
 }
@@ -461,6 +548,7 @@ root.addEventListener('click', async (e) => {
   }
   switch (el.dataset.action) {
     case 'refresh': refresh(); break;
+    case 'live-price': loadLivePrice(); break;
     case 'export':
       if (!state.history.length) break;
       try {
@@ -532,8 +620,7 @@ root.addEventListener('change', async (e) => {
 root.addEventListener('input', (e) => {
   if (e.target.id !== 'amount') return;
   state.calc.amount = e.target.value;
-  const box = document.getElementById('calc-results');
-  if (box) box.innerHTML = calcResults();
+  renderCalcBoxes();
 });
 
 // ---------------------------------------------------------------- boot

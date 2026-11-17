@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
+  parseAmountInput, parseParaleloBo, fetchPriceForAmount, binanceRequestBody, compareWithPast, historyValue, addDays, lastDayBefore,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -32,6 +33,22 @@ describe('numbers', () => {
     expect(fmtNumber(-3.2, 2, 'en')).toBe('−3.20');
     expect(fmtPercent(0.0375, 'en')).toBe('+3.8%');
   });
+  it('reads amounts typed with either decimal key', () => {
+    expect(parseAmountInput('100.50', 'es')).toBe(100.5);
+    expect(parseAmountInput('100,50', 'es')).toBe(100.5);
+    expect(parseAmountInput('1.000', 'es')).toBe(1000);
+    expect(parseAmountInput('1.234,5', 'es')).toBe(1234.5);
+    expect(parseAmountInput('1.000.000', 'es')).toBe(1000000);
+    expect(parseAmountInput('100.50', 'en')).toBe(100.5);
+    expect(parseAmountInput('100,50', 'en')).toBe(100.5);
+    expect(parseAmountInput('1,000', 'en')).toBe(1000);
+    expect(parseAmountInput('1,234.5', 'en')).toBe(1234.5);
+    expect(parseAmountInput(' 250 ', 'es')).toBe(250);
+    expect(parseAmountInput('12.', 'es')).toBe(12);
+    expect(parseAmountInput('', 'es')).toBeNaN();
+    expect(parseAmountInput('abc', 'es')).toBeNaN();
+    expect(parseAmountInput('1,2,3.4.5', 'es')).toBeNaN();
+  });
   it('median works for odd and even lists', () => {
     expect(median([3, 1, 2])).toBe(2);
     expect(median([4, 1, 3, 2])).toBe(2.5);
@@ -43,6 +60,15 @@ describe('BCB parser', () => {
     const r = parseBcbHome(BCB_HTML);
     expect(r.rate).toBe(12);
     expect(r.validity).toBe('El sábado 3, domingo 4 y lunes 5 de octubre, 2026');
+  });
+  it('reads the one-day date shown since the flexible rate', () => {
+    // Text of the BCB home page on 2026-11-17 (an HTML comment ends right before the value)
+    const html = `<div><h3>Tipo de cambio oficial</h3><p>Bolivianos por d&oacute;lar estadounidense</p>
+      <p>MARTES 17 DE NOVIEMBRE, 2026</p><span>Bs</span> --> <strong>11,70</strong>
+      <a>M&aacute;s informaci&oacute;n</a> Microdatos Valor referencial del d&oacute;lar - Serie hist&oacute;rica (1/12/25 - 26/6/26)
+      Tabla de cotizaciones martes 17 de noviembre, 2026 Oro USD./O.T.F. 3.845,96</div>`;
+    expect(parseBcbHome(html)).toEqual({ rate: 11.7, validity: 'Martes 17 de noviembre, 2026' });
+    expect(parseBcbHome('Tipo de cambio oficial Bolivianos por dólar 1 DE DICIEMBRE, 2026 Bs 11,75').validity).toBe('1 de diciembre, 2026');
   });
   it('fails loudly when the block is missing', () => {
     expect(() => parseBcbHome('<p>nada</p>')).toThrow(/Tipo de cambio oficial/);
@@ -94,6 +120,24 @@ describe('fetchSnapshot', () => {
     const s = await fetchSnapshot(fetchFn, {}, new Date());
     expect(s.bcb).toMatchObject({ rate: 12, source: 'DolarApi (respaldo)' });
     expect(s.p2p).toMatchObject({ buy: 12.47, sell: 12.42, mid: 12.45, source: 'paralelo.bo (respaldo)' });
+  });
+
+  it('reads both paralelo.bo formats', () => {
+    // Response on 2026-11-17
+    expect(parseParaleloBo({ timestamp: '2026-11-17T16:05:56.527Z', buy: 11.92, sell: 11.86, median: 11.89, sourceCount: 4 }))
+      .toEqual({ buy: 11.92, sell: 11.86, mid: 11.89 });
+    expect(parseParaleloBo({ median: 12.45, compra: 12.47, venta: 12.42 })).toEqual({ buy: 12.47, sell: 12.42, mid: 12.45 });
+  });
+
+  it('falls back to the current paralelo.bo format', async () => {
+    const fetchFn = async (url) => {
+      if (url === SOURCES.bcb) return res(BCB_HTML);
+      if (url === SOURCES.binance) return res('', false);
+      if (url === SOURCES.paraleloBo) return res({ buy: 11.92, sell: 11.86, median: 11.89 });
+      throw new Error('unexpected ' + url);
+    };
+    const s = await fetchSnapshot(fetchFn, {}, new Date());
+    expect(s.p2p).toMatchObject({ buy: 11.92, sell: 11.86, mid: 11.89, source: 'paralelo.bo (respaldo)' });
   });
 
   it('never throws: reports errors per source', async () => {
@@ -151,5 +195,64 @@ describe('daily schedule', () => {
   });
   it('respects the switch', () => {
     expect(isDue({ autoUpdate: false, updateTime: '00:00' }, null, at(12, 0))).toBe(false);
+  });
+});
+
+describe('compare with past days', () => {
+  const days = [12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9].map((mid, i) => ({
+    day: addDays('2026-10-01', i), mid, buy: mid + 0.05, sell: mid - 0.05,
+  }));
+  it('adds days across months', () => {
+    expect(addDays('2026-10-30', 3)).toBe('2026-11-02');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+  });
+  it('picks the side of a history day', () => {
+    expect(historyValue(days[0], 'buy')).toBeCloseTo(12.35);
+    expect(historyValue(days[0], 'mid')).toBe(12.3);
+    expect(historyValue({ day: 'x' }, 'sell')).toBeNaN();
+  });
+  it('says cheap, expensive or normal', () => {
+    expect(compareWithPast(12.2, days, 'mid', '2026-10-08', 7)).toEqual({ n: 7, lower: 7, higher: 0, level: 'cheap' });
+    expect(compareWithPast(13, days, 'mid', '2026-10-08', 7).level).toBe('expensive');
+    expect(compareWithPast(12.6, days, 'mid', '2026-10-08', 7).level).toBe('normal');
+  });
+  it('leaves out today and days outside the window', () => {
+    const withToday = [...days, { day: '2026-10-08', mid: 99 }];
+    expect(compareWithPast(12.85, withToday, 'mid', '2026-10-08', 2)).toMatchObject({ n: 2, lower: 1, higher: 1 });
+  });
+  it('finds the latest day before today', () => {
+    const h = [{ day: '2026-10-07' }, { day: '2026-10-05' }, { day: '2026-10-08' }];
+    expect(lastDayBefore(h, '2026-10-08').day).toBe('2026-10-07');
+    expect(lastDayBefore(h, '2026-10-05')).toBeNull();
+    expect(lastDayBefore([], '2026-10-05')).toBeNull();
+  });
+  it('needs at least 3 days', () => {
+    expect(compareWithPast(12.2, days.slice(-2), 'mid', '2026-10-08', 7).level).toBeNull();
+    expect(compareWithPast(NaN, days, 'mid', '2026-10-08', 7).level).toBeNull();
+  });
+});
+
+describe('price for my amount', () => {
+  it('asks Binance only for ads that accept the amount', () => {
+    expect(JSON.parse(binanceRequestBody('BUY', 5, 1190.4)).transAmount).toBe('1191');
+    expect(JSON.parse(binanceRequestBody('BUY', 5)).transAmount).toBeUndefined();
+    expect(JSON.parse(binanceRequestBody('BUY', 5, NaN)).transAmount).toBeUndefined();
+  });
+  it('returns the best ad, the median and how many ads accept it', async () => {
+    let sent;
+    const fetchFn = async (url, opts) => {
+      sent = JSON.parse(opts.body);
+      return res({ data: ads([11.92, 11.92, 11.93, 11.93, 11.95]).data, total: 40 });
+    };
+    const r = await fetchPriceForAmount(fetchFn, 'BUY', 50000);
+    expect(sent).toMatchObject({ tradeType: 'BUY', rows: 5, transAmount: '50000' });
+    expect(r).toEqual({ best: 11.92, median: 11.93, count: 5, total: 40 });
+  });
+  it('says when no ad accepts the amount', async () => {
+    const r = await fetchPriceForAmount(async () => res({ data: [], total: 0 }), 'SELL', 9999999);
+    expect(r.count).toBe(0);
+  });
+  it('throws when Binance does not answer', async () => {
+    await expect(fetchPriceForAmount(async () => res('', false), 'SELL', 1000)).rejects.toThrow();
   });
 });

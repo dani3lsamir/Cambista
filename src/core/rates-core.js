@@ -44,6 +44,30 @@ export function parseLocaleNumber(text) {
   return Number.isFinite(n) ? n : NaN;
 }
 
+// Amount typed by the user. Phone keyboards may offer "." or "," as the decimal key whatever the
+// app language, so a single separator followed by exactly 3 digits is read as thousands only when
+// it is the language's thousands separator ("." in Spanish, "," in English); otherwise it is the decimal point.
+// es: "100.50" -> 100.5 ; "1.000" -> 1000 ; "1.234,5" -> 1234.5   en: "1,000" -> 1000 ; "100,5" -> 100.5
+export function parseAmountInput(text, lang) {
+  const s = String(text == null ? '' : text).replace(/\s/g, '');
+  if (!/^\d*[.,]?[\d.,]*$/.test(s) || !/\d/.test(s)) return NaN;
+  const thousands = lang === 'en' ? ',' : '.';
+  let plain;
+  if (s.includes('.') && s.includes(',')) {
+    const dec = s.lastIndexOf('.') > s.lastIndexOf(',') ? '.' : ',';
+    const parts = s.split(dec);
+    if (parts.length !== 2) return NaN;
+    plain = parts[0].replace(/[.,]/g, '') + '.' + parts[1];
+  } else {
+    const sep = s.includes('.') ? '.' : s.includes(',') ? ',' : '';
+    const parts = sep ? s.split(sep) : [s];
+    if (parts.length > 2) plain = parts.join(''); // "1.000.000"
+    else if (parts.length === 2 && sep === thousands && parts[1].length === 3 && parts[0] !== '') plain = parts.join('');
+    else plain = parts.join('.');
+  }
+  return /^\d*\.?\d+$|^\d+\.$/.test(plain) ? Number(plain) : NaN;
+}
+
 export function htmlToText(html) {
   return String(html)
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -60,6 +84,8 @@ export function htmlToText(html) {
 }
 
 // Reads the "Tipo de cambio oficial" block on the BCB home page.
+// Text on 2026-11-17: "Tipo de cambio oficial Bolivianos por dólar estadounidense
+// MARTES 17 DE NOVIEMBRE, 2026 Bs --> 11,70"
 // Text on 2026-10-05: "Tipo de cambio oficial Bolivianos por dólar estadounidense
 // VIGENTE PARA EL SÁBADO 3, DOMINGO 4 Y LUNES 5 DE OCTUBRE, 2026 12,00"
 export function parseBcbHome(html) {
@@ -67,7 +93,9 @@ export function parseBcbHome(html) {
   const start = text.search(/tipo de cambio oficial/i);
   if (start < 0) throw new Error('BCB: no se encontró "Tipo de cambio oficial"');
   const block = text.slice(start, start + 400);
-  const validityMatch = block.match(/VIGENTE\s+PARA\s+(.+?\d{4})/i);
+  // Since the flexible rate (2026) the page shows one date: "MARTES 17 DE NOVIEMBRE, 2026 Bs 11,70"
+  const validityMatch = block.match(/VIGENTE\s+PARA\s+(.+?\d{4})/i) ||
+    block.match(/((?:(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+)?\d{1,2}\s+de\s+[a-zñ]+,?\s+\d{4})/i);
   const afterValidity = validityMatch ? block.slice(block.indexOf(validityMatch[0]) + validityMatch[0].length) : block;
   const rateMatch = afterValidity.match(/(\d{1,2}[.,]\d{2,4})/);
   if (!rateMatch) throw new Error('BCB: no se encontró el valor');
@@ -95,8 +123,9 @@ export function median(values) {
   return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
 }
 
-export function binanceRequestBody(tradeType, rows) {
-  return JSON.stringify({
+// transAmount (optional, in Bs): Binance then lists only ads whose minimum and maximum accept it
+export function binanceRequestBody(tradeType, rows, transAmount) {
+  const body = {
     fiat: 'BOB',
     asset: 'USDT',
     tradeType, // 'BUY' = ads where you buy USDT ; 'SELL' = ads where you sell USDT
@@ -105,7 +134,9 @@ export function binanceRequestBody(tradeType, rows) {
     payTypes: [],
     publisherType: null,
     countries: [],
-  });
+  };
+  if (Number.isFinite(transAmount) && transAmount > 0) body.transAmount = String(Math.ceil(transAmount));
+  return JSON.stringify(body);
 }
 
 // Binance P2P search response -> list of prices
@@ -126,12 +157,13 @@ export function parseCompraVenta(json) {
   return { buy, sell, updatedAt: (json && json.fechaActualizacion) || null };
 }
 
-// paralelo.bo: { median, compra, venta, ... }
+// paralelo.bo: { buy, sell, median, ... } since November 2026; before that { median, compra, venta }
 export function parseParaleloBo(json) {
-  const buy = parseLocaleNumber(String(json && json.compra));
-  const sell = parseLocaleNumber(String(json && json.venta));
-  const mid = parseLocaleNumber(String(json && (json.median !== undefined ? json.median : json.mediana)));
-  return { buy, sell, mid };
+  const pick = (...keys) => {
+    const k = keys.find((key) => json && json[key] !== undefined && json[key] !== null);
+    return parseLocaleNumber(String(k ? json[k] : undefined));
+  };
+  return { buy: pick('buy', 'compra'), sell: pick('sell', 'venta'), mid: pick('median', 'mediana') };
 }
 
 export async function readText(res) {
@@ -173,6 +205,22 @@ export async function fetchBinanceSide(fetchFn, tradeType, rows) {
   });
   const prices = parseBinanceAds(json).slice(0, rows);
   return { price: median(prices), count: prices.length };
+}
+
+// Price for a real trade of `fiatAmount` Bs: the best `rows` ads that accept that amount, best first.
+// Returns { best, median, count, total }: best = price of the first ad, count = ads used,
+// total = all ads that accept the amount (null if Binance does not say). count 0 = no ad accepts it.
+export async function fetchPriceForAmount(fetchFn, tradeType, fiatAmount, rows) {
+  const n = rows || 5;
+  const json = await getJson(fetchFn, SOURCES.binance, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: binanceRequestBody(tradeType, n, fiatAmount),
+  });
+  const total = json && Number.isFinite(json.total) ? json.total : null;
+  if (json && Array.isArray(json.data) && !json.data.length) return { best: NaN, median: NaN, count: 0, total: 0 };
+  const prices = parseBinanceAds(json).slice(0, n);
+  return { best: prices[0], median: median(prices), count: prices.length, total };
 }
 
 // Third-party sites label compra/venta from different points of view, so the sides are
@@ -232,6 +280,44 @@ export function p2pReference(p2p, side) {
 export function gap(p2pRate, bcbRate) {
   if (!isPlausibleRate(p2pRate) || !isPlausibleRate(bcbRate)) return NaN;
   return p2pRate / bcbRate - 1;
+}
+
+// P2P price of one history day for the chosen side ('mid' | 'buy' | 'sell')
+export function historyValue(entry, side) {
+  if (!entry) return NaN;
+  const v = side === 'buy' ? entry.buy : side === 'sell' ? entry.sell : entry.mid;
+  return Number.isFinite(v) ? v : NaN;
+}
+
+export function addDays(day, n) {
+  const [y, m, d] = String(day).split('-').map(Number);
+  return localDay(new Date(y, m - 1, d + n));
+}
+
+// Latest history day before `today` (usually yesterday), or null
+export function lastDayBefore(history, today) {
+  let best = null;
+  for (const h of history || []) if (h && h.day < today && (!best || h.day > best.day)) best = h;
+  return best;
+}
+
+// Today's P2P price against the previous `days` days of history (today itself is left out).
+// level: 'cheap' when it is lower than at least 75% of those days, 'expensive' when higher than
+// at least 75%, 'normal' otherwise, null with fewer than 3 days to compare.
+export function compareWithPast(value, history, side, today, days) {
+  const from = addDays(today, -days);
+  const past = (history || [])
+    .filter((h) => h && h.day >= from && h.day < today)
+    .map((h) => historyValue(h, side))
+    .filter(isPlausibleRate);
+  const n = past.length;
+  const lower = past.filter((v) => v > value).length; // days when the price was higher than today
+  const higher = past.filter((v) => v < value).length; // days when the price was lower than today
+  let level = null;
+  if (isPlausibleRate(value) && n >= 3) {
+    level = lower / n >= 0.75 ? 'cheap' : higher / n >= 0.75 ? 'expensive' : 'normal';
+  }
+  return { n, lower, higher, level };
 }
 
 export function localDay(date) {
