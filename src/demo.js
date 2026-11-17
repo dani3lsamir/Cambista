@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 const BCB_HTML = `<div class="tc"><h3>Tipo de cambio oficial</h3><p>Bolivianos por dólar estadounidense</p>
-<p>VIGENTE PARA EL SÁBADO 3, DOMINGO 4 Y LUNES 5 DE OCTUBRE, 2026</p><strong>12,00</strong></div>`;
+<p>MARTES 17 DE NOVIEMBRE, 2026</p><span>Bs</span> --> <strong>11,70</strong></div>`;
 
 function ads(base, step, n) {
   return { data: Array.from({ length: n }, (_, i) => ({ adv: { price: (base + i * step).toFixed(2) } })) };

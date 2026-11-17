@@ -61,6 +61,15 @@ describe('BCB parser', () => {
     expect(r.rate).toBe(12);
     expect(r.validity).toBe('El sábado 3, domingo 4 y lunes 5 de octubre, 2026');
   });
+  it('reads the one-day date shown since the flexible rate', () => {
+    // Text of the BCB home page on 2026-11-17 (an HTML comment ends right before the value)
+    const html = `<div><h3>Tipo de cambio oficial</h3><p>Bolivianos por d&oacute;lar estadounidense</p>
+      <p>MARTES 17 DE NOVIEMBRE, 2026</p><span>Bs</span> --> <strong>11,70</strong>
+      <a>M&aacute;s informaci&oacute;n</a> Microdatos Valor referencial del d&oacute;lar - Serie hist&oacute;rica (1/12/25 - 26/6/26)
+      Tabla de cotizaciones martes 17 de noviembre, 2026 Oro USD./O.T.F. 3.845,96</div>`;
+    expect(parseBcbHome(html)).toEqual({ rate: 11.7, validity: 'Martes 17 de noviembre, 2026' });
+    expect(parseBcbHome('Tipo de cambio oficial Bolivianos por dólar 1 DE DICIEMBRE, 2026 Bs 11,75').validity).toBe('1 de diciembre, 2026');
+  });
   it('fails loudly when the block is missing', () => {
     expect(() => parseBcbHome('<p>nada</p>')).toThrow(/Tipo de cambio oficial/);
   });

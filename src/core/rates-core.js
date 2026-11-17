@@ -84,6 +84,8 @@ export function htmlToText(html) {
 }
 
 // Reads the "Tipo de cambio oficial" block on the BCB home page.
+// Text on 2026-11-17: "Tipo de cambio oficial Bolivianos por dólar estadounidense
+// MARTES 17 DE NOVIEMBRE, 2026 Bs --> 11,70"
 // Text on 2026-10-05: "Tipo de cambio oficial Bolivianos por dólar estadounidense
 // VIGENTE PARA EL SÁBADO 3, DOMINGO 4 Y LUNES 5 DE OCTUBRE, 2026 12,00"
 export function parseBcbHome(html) {
@@ -91,7 +93,9 @@ export function parseBcbHome(html) {
   const start = text.search(/tipo de cambio oficial/i);
   if (start < 0) throw new Error('BCB: no se encontró "Tipo de cambio oficial"');
   const block = text.slice(start, start + 400);
-  const validityMatch = block.match(/VIGENTE\s+PARA\s+(.+?\d{4})/i);
+  // Since the flexible rate (2026) the page shows one date: "MARTES 17 DE NOVIEMBRE, 2026 Bs 11,70"
+  const validityMatch = block.match(/VIGENTE\s+PARA\s+(.+?\d{4})/i) ||
+    block.match(/((?:(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+)?\d{1,2}\s+de\s+[a-zñ]+,?\s+\d{4})/i);
   const afterValidity = validityMatch ? block.slice(block.indexOf(validityMatch[0]) + validityMatch[0].length) : block;
   const rateMatch = afterValidity.match(/(\d{1,2}[.,]\d{2,4})/);
   if (!rateMatch) throw new Error('BCB: no se encontró el valor');
