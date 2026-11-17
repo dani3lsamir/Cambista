@@ -8,7 +8,7 @@ const BCB_HTML = `<div class="tc"><h3>Tipo de cambio oficial</h3><p>Bolivianos p
 <p>MARTES 17 DE NOVIEMBRE, 2026</p><span>Bs</span> --> <strong>11,70</strong></div>`;
 
 function ads(base, step, n) {
-  return { data: Array.from({ length: n }, (_, i) => ({ adv: { price: (base + i * step).toFixed(2) } })) };
+  return { data: Array.from({ length: n }, (_, i) => ({ adv: { price: (base + i * step).toFixed(2) } })), total: 42 };
 }
 
 export function demoFetch(url, options) {

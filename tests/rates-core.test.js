@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
-  parseAmountInput, parseParaleloBo, compareWithPast, historyValue, addDays, lastDayBefore,
+  parseAmountInput, parseParaleloBo, fetchPriceForAmount, binanceRequestBody, compareWithPast, historyValue, addDays, lastDayBefore,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -229,5 +229,30 @@ describe('compare with past days', () => {
   it('needs at least 3 days', () => {
     expect(compareWithPast(12.2, days.slice(-2), 'mid', '2026-10-08', 7).level).toBeNull();
     expect(compareWithPast(NaN, days, 'mid', '2026-10-08', 7).level).toBeNull();
+  });
+});
+
+describe('price for my amount', () => {
+  it('asks Binance only for ads that accept the amount', () => {
+    expect(JSON.parse(binanceRequestBody('BUY', 5, 1190.4)).transAmount).toBe('1191');
+    expect(JSON.parse(binanceRequestBody('BUY', 5)).transAmount).toBeUndefined();
+    expect(JSON.parse(binanceRequestBody('BUY', 5, NaN)).transAmount).toBeUndefined();
+  });
+  it('returns the best ad, the median and how many ads accept it', async () => {
+    let sent;
+    const fetchFn = async (url, opts) => {
+      sent = JSON.parse(opts.body);
+      return res({ data: ads([11.92, 11.92, 11.93, 11.93, 11.95]).data, total: 40 });
+    };
+    const r = await fetchPriceForAmount(fetchFn, 'BUY', 50000);
+    expect(sent).toMatchObject({ tradeType: 'BUY', rows: 5, transAmount: '50000' });
+    expect(r).toEqual({ best: 11.92, median: 11.93, count: 5, total: 40 });
+  });
+  it('says when no ad accepts the amount', async () => {
+    const r = await fetchPriceForAmount(async () => res({ data: [], total: 0 }), 'SELL', 9999999);
+    expect(r.count).toBe(0);
+  });
+  it('throws when Binance does not answer', async () => {
+    await expect(fetchPriceForAmount(async () => res('', false), 'SELL', 1000)).rejects.toThrow();
   });
 });

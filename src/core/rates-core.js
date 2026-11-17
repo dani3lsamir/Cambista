@@ -123,8 +123,9 @@ export function median(values) {
   return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
 }
 
-export function binanceRequestBody(tradeType, rows) {
-  return JSON.stringify({
+// transAmount (optional, in Bs): Binance then lists only ads whose minimum and maximum accept it
+export function binanceRequestBody(tradeType, rows, transAmount) {
+  const body = {
     fiat: 'BOB',
     asset: 'USDT',
     tradeType, // 'BUY' = ads where you buy USDT ; 'SELL' = ads where you sell USDT
@@ -133,7 +134,9 @@ export function binanceRequestBody(tradeType, rows) {
     payTypes: [],
     publisherType: null,
     countries: [],
-  });
+  };
+  if (Number.isFinite(transAmount) && transAmount > 0) body.transAmount = String(Math.ceil(transAmount));
+  return JSON.stringify(body);
 }
 
 // Binance P2P search response -> list of prices
@@ -202,6 +205,22 @@ export async function fetchBinanceSide(fetchFn, tradeType, rows) {
   });
   const prices = parseBinanceAds(json).slice(0, rows);
   return { price: median(prices), count: prices.length };
+}
+
+// Price for a real trade of `fiatAmount` Bs: the best `rows` ads that accept that amount, best first.
+// Returns { best, median, count, total }: best = price of the first ad, count = ads used,
+// total = all ads that accept the amount (null if Binance does not say). count 0 = no ad accepts it.
+export async function fetchPriceForAmount(fetchFn, tradeType, fiatAmount, rows) {
+  const n = rows || 5;
+  const json = await getJson(fetchFn, SOURCES.binance, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: binanceRequestBody(tradeType, n, fiatAmount),
+  });
+  const total = json && Number.isFinite(json.total) ? json.total : null;
+  if (json && Array.isArray(json.data) && !json.data.length) return { best: NaN, median: NaN, count: 0, total: 0 };
+  const prices = parseBinanceAds(json).slice(0, n);
+  return { best: prices[0], median: median(prices), count: prices.length, total };
 }
 
 // Third-party sites label compra/venta from different points of view, so the sides are

@@ -4,7 +4,7 @@
 import { App } from '@capacitor/app';
 import {
   fetchSnapshot, p2pReference, gap, fmtNumber as fmtNum, fmtPercent as fmtPct, localDay, parseAmountInput,
-  compareWithPast, lastDayBefore, addDays,
+  compareWithPast, lastDayBefore, addDays, fetchPriceForAmount,
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
@@ -28,7 +28,7 @@ const state = {
   history: [],
   loading: false,
   errors: [],
-  calc: { dir: 'usd2bs', amount: '100' },
+  calc: { dir: 'usd2bs', amount: '100', live: null }, // live: { key, loading, result, failed }
   sheet: null,
 };
 
@@ -273,6 +273,60 @@ function calcResults() {
     <div class="row"><div class="grow">${t('difference')}</div><div class="end num">USD ${fmtNumber(atP2p - atBcb)}</div></div>`;
 }
 
+// Bs amount of the trade the calculator describes: what you pay (buying) or roughly what you get (selling)
+function calcFiatAmount() {
+  const amount = parseAmount(state.calc.amount);
+  if (state.calc.dir === 'bs2usd') return amount;
+  const rate = state.latest.p2p?.sell ?? state.latest.bcb?.rate;
+  return amount * (rate ?? NaN);
+}
+
+const liveKey = () => `${state.calc.dir}|${parseAmount(state.calc.amount)}`;
+
+// "Price for my amount": Binance ads whose minimum and maximum accept this trade
+function calcLive() {
+  const live = state.calc.live?.key === liveKey() ? state.calc.live : null;
+  const usd = state.calc.dir === 'usd2bs';
+  if (!live || (!live.loading && !live.result && !live.failed)) {
+    const ok = Number.isFinite(calcFiatAmount()) && calcFiatAmount() > 0;
+    return `<button class="row" data-action="live-price" ${ok ? '' : 'disabled'}><div class="grow">${t('livePrice')}<div class="sub">${t('livePriceWhat')}</div></div><div class="end">${svg('refresh', 18)}</div></button>`;
+  }
+  if (live.loading) return `<div class="row"><div class="grow">${t('livePrice')}<div class="sub">${t('liveLoading')}</div></div><div class="end"><span class="spin"></span></div></div>`;
+  if (live.failed) return `<button class="row" data-action="live-price"><div class="grow">${t('livePrice')}<div class="sub">${t('liveFailed')}</div></div><div class="end">${svg('refresh', 18)}</div></button>`;
+  const r = live.result;
+  if (!r.count) return `<div class="row"><div class="grow">${t('livePrice')}<div class="sub">${t('liveNone')}</div></div></div>`;
+  const amount = parseAmount(state.calc.amount);
+  const got = usd ? `Bs ${fmtNumber(amount * r.median)}` : `USD ${fmtNumber(amount / r.median)}`;
+  const accepted = r.total ? t(r.total === 1 ? 'liveAdsOne' : 'liveAdsMany', { n: r.total }) : '';
+  return `
+    <div class="row"><div class="grow">${usd ? t('liveSelling') : t('liveBuying')}<div class="sub num">${t('perDollar', { rate: fmtNumber(r.median) })} · ${t('liveMedianOf', { n: r.count })}</div></div><div class="end strong num">${got}</div></div>
+    <div class="row"><div class="grow">${t('liveBest')}<div class="sub">${accepted}</div></div><div class="end num">${fmtNumber(r.best)}</div></div>`;
+}
+
+async function loadLivePrice() {
+  const key = liveKey();
+  const fiat = calcFiatAmount();
+  if (!(fiat > 0)) return;
+  state.calc.live = { key, loading: true };
+  renderCalcBoxes();
+  const fetchFn = DEMO ? demoFetch : (url, opts) => fetch(url, opts);
+  let next;
+  try {
+    next = { key, result: await fetchPriceForAmount(fetchFn, state.calc.dir === 'usd2bs' ? 'SELL' : 'BUY', fiat) };
+  } catch {
+    next = { key, failed: true };
+  }
+  if (state.calc.live?.key === key) state.calc.live = next; // the amount may have changed meanwhile
+  renderCalcBoxes();
+}
+
+function renderCalcBoxes() {
+  const box = document.getElementById('calc-results');
+  if (box) box.innerHTML = calcResults();
+  const live = document.getElementById('calc-live');
+  if (live) live.innerHTML = calcLive();
+}
+
 function screenCalc() {
   const usd = state.calc.dir === 'usd2bs';
   return `
@@ -288,6 +342,8 @@ function screenCalc() {
     </section>
     <div class="section-label">${usd ? t('getBs') : t('getUsd')}</div>
     <section class="card" id="calc-results">${calcResults()}</section>
+    <div class="section-label">${t('liveTitle')}</div>
+    <section class="card" id="calc-live">${calcLive()}</section>
     <p class="footnote">${t('calcNote')}</p>
   </main>`;
 }
@@ -492,6 +548,7 @@ root.addEventListener('click', async (e) => {
   }
   switch (el.dataset.action) {
     case 'refresh': refresh(); break;
+    case 'live-price': loadLivePrice(); break;
     case 'export':
       if (!state.history.length) break;
       try {
@@ -563,8 +620,7 @@ root.addEventListener('change', async (e) => {
 root.addEventListener('input', (e) => {
   if (e.target.id !== 'amount') return;
   state.calc.amount = e.target.value;
-  const box = document.getElementById('calc-results');
-  if (box) box.innerHTML = calcResults();
+  renderCalcBoxes();
 });
 
 // ---------------------------------------------------------------- boot
