@@ -7,7 +7,7 @@ Notas técnicas para el dueño del proyecto y para los agentes de IA. Lo que ve 
 GitHub lo arma solo (`.github/workflows/android.yml`) cada vez que subes cambios a `main`:
 
 1. Ve a la pestaña **Actions** del repo, abre la última ejecución de **Android APK** y descarga el archivo de **Artifacts**.
-2. Para tener un link directo desde el celular, crea un tag con la versión de `package.json` (por ejemplo `v0.1.1`). GitHub publica entonces un **Release** con el APK adjunto.
+2. Para tener un link directo desde el celular, crea un tag con la versión de `package.json` (por ejemplo `v0.1.1`). GitHub publica entonces un **Release** con el APK adjunto. También puedes ir a **Actions → Android APK → Run workflow**, elegir `main` y marcar **Publish a release**: GitHub crea el tag `v<versión>` solo y publica el Release.
 3. Con los 4 secretos `CAMBISTA_*` configurados, el APK sale firmado con tu llave y las versiones nuevas se instalan encima de las viejas sin perder datos. Sin los secretos sale un APK de prueba (debug).
 
 Para instalarlo en Android, abre el APK y permite "instalar apps de origen desconocido" para tu navegador o tu gestor de archivos.
