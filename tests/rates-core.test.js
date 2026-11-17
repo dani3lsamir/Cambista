@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
-  parseAmountInput, compareWithPast, historyValue, addDays, lastDayBefore,
+  parseAmountInput, parseParaleloBo, compareWithPast, historyValue, addDays, lastDayBefore,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -111,6 +111,24 @@ describe('fetchSnapshot', () => {
     const s = await fetchSnapshot(fetchFn, {}, new Date());
     expect(s.bcb).toMatchObject({ rate: 12, source: 'DolarApi (respaldo)' });
     expect(s.p2p).toMatchObject({ buy: 12.47, sell: 12.42, mid: 12.45, source: 'paralelo.bo (respaldo)' });
+  });
+
+  it('reads both paralelo.bo formats', () => {
+    // Response on 2026-11-17
+    expect(parseParaleloBo({ timestamp: '2026-11-17T16:05:56.527Z', buy: 11.92, sell: 11.86, median: 11.89, sourceCount: 4 }))
+      .toEqual({ buy: 11.92, sell: 11.86, mid: 11.89 });
+    expect(parseParaleloBo({ median: 12.45, compra: 12.47, venta: 12.42 })).toEqual({ buy: 12.47, sell: 12.42, mid: 12.45 });
+  });
+
+  it('falls back to the current paralelo.bo format', async () => {
+    const fetchFn = async (url) => {
+      if (url === SOURCES.bcb) return res(BCB_HTML);
+      if (url === SOURCES.binance) return res('', false);
+      if (url === SOURCES.paraleloBo) return res({ buy: 11.92, sell: 11.86, median: 11.89 });
+      throw new Error('unexpected ' + url);
+    };
+    const s = await fetchSnapshot(fetchFn, {}, new Date());
+    expect(s.p2p).toMatchObject({ buy: 11.92, sell: 11.86, mid: 11.89, source: 'paralelo.bo (respaldo)' });
   });
 
   it('never throws: reports errors per source', async () => {

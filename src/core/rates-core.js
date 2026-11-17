@@ -150,12 +150,13 @@ export function parseCompraVenta(json) {
   return { buy, sell, updatedAt: (json && json.fechaActualizacion) || null };
 }
 
-// paralelo.bo: { median, compra, venta, ... }
+// paralelo.bo: { buy, sell, median, ... } since November 2026; before that { median, compra, venta }
 export function parseParaleloBo(json) {
-  const buy = parseLocaleNumber(String(json && json.compra));
-  const sell = parseLocaleNumber(String(json && json.venta));
-  const mid = parseLocaleNumber(String(json && (json.median !== undefined ? json.median : json.mediana)));
-  return { buy, sell, mid };
+  const pick = (...keys) => {
+    const k = keys.find((key) => json && json[key] !== undefined && json[key] !== null);
+    return parseLocaleNumber(String(k ? json[k] : undefined));
+  };
+  return { buy: pick('buy', 'compra'), sell: pick('sell', 'venta'), mid: pick('median', 'mediana') };
 }
 
 export async function readText(res) {
