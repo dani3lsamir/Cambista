@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
 import { officialValidity, readMarket, readOfficial, readOfficialHistory } from '../scripts/collect-market.mjs';
-import { emptyMarket, estimateForAmount, recordSample } from '../web/market.js';
+import { emptyMarket, estimateForAmount, quoteComparison, recordSample } from '../web/market.js';
 
 const bcb = { rate: 7, from: '2026-01-31', through: '2026-02-02' };
 const book = {
@@ -37,6 +37,17 @@ describe('the public rate history', () => {
 });
 
 describe('observed quotes', () => {
+  it('compares the displayed P2P quote against a BCB rate valid on its Bolivian date', () => {
+    const p2p = { ...book, at: '2026-02-01T02:00Z' };
+    const comparison = quoteComparison(bcb, p2p);
+    expect(comparison).toMatchObject({ day: '2026-01-31', amount: 3 });
+    expect(comparison.ratio).toBeCloseTo(10 / 7 - 1);
+    expect(quoteComparison({ ...bcb, from: '2026-02-01' }, p2p)).toBeNull();
+    expect(quoteComparison(bcb, { ...p2p, at: '2026-02-03T04:00Z' })).toBeNull();
+    expect(quoteComparison(bcb, null)).toBeNull();
+    expect(quoteComparison(bcb, { ...p2p, at: 'invalid' })).toBeNull();
+  });
+
   it('respects the minimum, maximum, and available funds for buying and selling', () => {
     expect(estimateForAmount(book, 200, 'BOB')).toMatchObject({ rate: 10, result: 20, matched: true });
     expect(estimateForAmount(book, 500, 'BOB')).toMatchObject({ rate: 10.2, matched: true });

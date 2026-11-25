@@ -16,8 +16,8 @@
     <header class="header">
       <div class="wrap header-inner">
         <a class="brand" href="./" aria-label="Cambista">
-          <img class="brand-light" src="../resources/brand/logo-light.svg" width="431" height="96" alt="" />
-          <img class="brand-dark" src="../resources/brand/logo-dark.svg" width="431" height="96" alt="" />
+          <img class="brand-light" src="../resources/brand/logo-light.svg" width="362" height="96" alt="" />
+          <img class="brand-dark" src="../resources/brand/logo-dark.svg" width="362" height="96" alt="" />
         </a>
         <div class="header-controls">
           <button id="theme" class="theme-toggle" type="button" aria-label="Modo noche" aria-pressed="false">☾</button>
@@ -39,16 +39,25 @@
           <a class="source-link" href="https://www.bcb.gob.bo/" data-text="webBcbSource">Banco Central de Bolivia</a>
         </article>
         <article class="quote market">
-          <div class="quote-heading">
-            <h2 data-text="webParallel">USDT en Binance P2P</h2>
-            <span class="gap" id="gap" hidden></span>
+          <div class="market-layout">
+            <div>
+              <h2 data-text="webParallel">USDT en Binance P2P</h2>
+              <p class="price"><span id="parallel">—</span><small data-text="webPerUsdt">Bs por USDT</small></p>
+              <dl class="sides">
+                <div><dt data-text="webPay">Pagás al comprar</dt><dd id="buy">—</dd></div>
+                <div><dt data-text="webReceive">Recibís al vender</dt><dd id="sell">—</dd></div>
+              </dl>
+              <p class="source" id="parallel-time"></p>
+            </div>
+            <section class="comparison" aria-labelledby="comparison-title">
+              <h3 id="comparison-title" data-text="webGapLabel">Variación frente al BCB</h3>
+              <div class="comparison-values">
+                <p class="comparison-percent" id="gap">—</p>
+                <p class="comparison-amount" id="gap-amount" hidden></p>
+              </div>
+              <p class="source" id="gap-note"></p>
+            </section>
           </div>
-          <p class="price"><span id="parallel">—</span><small data-text="webPerUsdt">Bs por USDT</small></p>
-          <dl class="sides">
-            <div><dt data-text="webPay">Pagás al comprar</dt><dd id="buy">—</dd></div>
-            <div><dt data-text="webReceive">Recibís al vender</dt><dd id="sell">—</dd></div>
-          </dl>
-          <p class="source" id="parallel-time"></p>
         </article>
       </section>
       <div class="details">

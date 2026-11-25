@@ -1,6 +1,6 @@
 // Copyright (C) 2026 dani3lsamir
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { isPlausibleRate } from '../src/core/rates-core.js';
+import { gap, isPlausibleRate } from '../src/core/rates-core.js';
 
 export const BOLIVIA_TIME_ZONE = 'America/La_Paz';
 const localDate = new Intl.DateTimeFormat('sv-SE', { timeZone: BOLIVIA_TIME_ZONE });
@@ -8,6 +8,18 @@ const TODAY_WINDOW_MS = 36 * 60 * 60 * 1000;
 
 export function boliviaDay(date) {
   return localDate.format(new Date(date));
+}
+
+export function bcbValidOn(bcb, day) {
+  return bcb?.from <= day && day <= bcb?.through;
+}
+
+export function quoteComparison(bcb, p2p) {
+  const at = Date.parse(p2p?.at);
+  const ratio = gap(p2p?.mid, bcb?.rate);
+  if (!Number.isFinite(at) || !Number.isFinite(ratio)) return null;
+  const day = boliviaDay(at);
+  return bcbValidOn(bcb, day) ? { at, day, ratio, amount: p2p.mid - bcb.rate } : null;
 }
 
 export function emptyMarket() {
