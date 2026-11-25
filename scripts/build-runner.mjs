@@ -1,3 +1,7 @@
+// Cambista — background runner build
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // Builds public/runners/daily.js = src/core/rates-core.js (without `export`) + src/runner/daily.js
 // The background runner is a plain script (no modules), so the shared code is pasted in front.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';

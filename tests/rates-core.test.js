@@ -1,8 +1,11 @@
-import { describe, it, expect } from 'vitest';
+// Cambista — tests for the rates core
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
+import { describe, it, expect, vi } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
-  parseAmountInput, parseParaleloBo, fetchPriceForAmount, binanceRequestBody, compareWithPast, historyValue, addDays, lastDayBefore,
+  parseAmountInput, parseParaleloBo, fetchPriceForAmount, binanceRequestBody, withTimeout, FETCH_TIMEOUT_MS, compareWithPast, historyValue, addDays, lastDayBefore,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -32,6 +35,23 @@ describe('numbers', () => {
     expect(fmtNumber(1234.5, 2, 'en')).toBe('1,234.50');
     expect(fmtNumber(-3.2, 2, 'en')).toBe('−3.20');
     expect(fmtPercent(0.0375, 'en')).toBe('+3.8%');
+  });
+  it('reads English thousands and rejects empty text', () => {
+    expect(parseLocaleNumber('1,234.56')).toBe(1234.56);
+    expect(parseLocaleNumber('')).toBeNaN();
+    expect(parseLocaleNumber('   ')).toBeNaN();
+    expect(parseLocaleNumber(Infinity)).toBeNaN();
+  });
+  it('rejects amounts with misplaced separators', () => {
+    expect(parseAmountInput('1.2.3', 'es')).toBeNaN();
+    expect(parseAmountInput('1,000,000', 'es')).toBeNaN();
+    expect(parseAmountInput('1,000,000', 'en')).toBe(1000000);
+  });
+  it('never shows a minus sign or a plus sign on zero', () => {
+    expect(fmtNumber(-0.001)).toBe('0,00');
+    expect(fmtPercent(-0.0001)).toBe('0,0%');
+    expect(fmtPercent(0.0001)).toBe('0,0%');
+    expect(fmtPercent(0)).toBe('0,0%');
   });
   it('reads amounts typed with either decimal key', () => {
     expect(parseAmountInput('100.50', 'es')).toBe(100.5);
@@ -69,6 +89,17 @@ describe('BCB parser', () => {
       Tabla de cotizaciones martes 17 de noviembre, 2026 Oro USD./O.T.F. 3.845,96</div>`;
     expect(parseBcbHome(html)).toEqual({ rate: 11.7, validity: 'Martes 17 de noviembre, 2026' });
     expect(parseBcbHome('Tipo de cambio oficial Bolivianos por dólar 1 DE DICIEMBRE, 2026 Bs 11,75').validity).toBe('1 de diciembre, 2026');
+  });
+  it('never takes the gold price or another indicator when the value is missing', () => {
+    const html = `<div><h3>Tipo de cambio oficial</h3><p>Bolivianos por dólar estadounidense</p><p>MARTES 17 DE NOVIEMBRE, 2026</p>
+      <!--<span>Bs</span>--><span></span><a>Más información</a> Tabla de cotizaciones Oro USD./O.T.F. 3.845,96 UFV 3,37599</div>`;
+    expect(() => parseBcbHome(html)).toThrow(/no se encontró el valor/);
+    expect(() => parseBcbHome('Tipo de cambio oficial VIGENTE PARA HOY 2026 Oro 3.845,96')).toThrow(/no se encontró el valor/);
+  });
+  it('reads the BCB block with comments and numeric entities', () => {
+    const html = `<p>Tipo de cambio oficial</p><p>Bolivianos por d&#243;lar</p><time>MI&#201;RCOLES 18 DE NOVIEMBRE, 2026</time>
+      <div><!--<span class="bcb-tco-bs">Bs</span>--><span>11,72</span></div><a>M&aacute;s informaci&oacute;n</a>`;
+    expect(parseBcbHome(html)).toEqual({ rate: 11.72, validity: 'Miércoles 18 de noviembre, 2026' });
   });
   it('fails loudly when the block is missing', () => {
     expect(() => parseBcbHome('<p>nada</p>')).toThrow(/Tipo de cambio oficial/);
@@ -140,11 +171,36 @@ describe('fetchSnapshot', () => {
     expect(s.p2p).toMatchObject({ buy: 11.92, sell: 11.86, mid: 11.89, source: 'paralelo.bo (respaldo)' });
   });
 
+  it('gives up on a site that never answers', async () => {
+    await expect(withTimeout(new Promise(() => {}), 20, 'https://x')).rejects.toThrow(/Sin respuesta/);
+    await expect(withTimeout(Promise.resolve('ok'), 20, 'https://x')).resolves.toBe('ok');
+    expect(FETCH_TIMEOUT_MS).toBeGreaterThanOrEqual(10000);
+  });
+
+  it('uses the backup when the BCB hangs', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchFn = (url) => {
+        if (url === SOURCES.bcb) return new Promise(() => {});
+        if (url === SOURCES.dolarapiOficial) return Promise.resolve(res({ compra: 11.7, venta: 11.7 }));
+        if (url === SOURCES.binance) return Promise.resolve(res(ads([11.9, 11.92])));
+        return Promise.reject(new Error('unexpected ' + url));
+      };
+      const pending = fetchSnapshot(fetchFn, { adsCount: 2 }, new Date());
+      await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS + 10);
+      const s = await pending;
+      expect(s.bcb).toMatchObject({ rate: 11.7, source: 'DolarApi (respaldo)' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('never throws: reports errors per source', async () => {
     const s = await fetchSnapshot(async () => { throw new Error('sin internet'); }, {}, new Date());
     expect(s.bcb).toBeNull();
     expect(s.p2p).toBeNull();
     expect(s.errors.length).toBe(2);
+    expect(s.failed).toEqual(['bcb', 'p2p']);
   });
 });
 
@@ -247,6 +303,12 @@ describe('price for my amount', () => {
     const r = await fetchPriceForAmount(fetchFn, 'BUY', 50000);
     expect(sent).toMatchObject({ tradeType: 'BUY', rows: 5, transAmount: '50000' });
     expect(r).toEqual({ best: 11.92, median: 11.93, count: 5, total: 40 });
+  });
+  it('picks the best price even if Binance lists another ad first', async () => {
+    const buy = await fetchPriceForAmount(async () => res({ data: ads([12.1, 11.9, 11.95]).data, total: 3 }), 'BUY', 1000);
+    expect(buy.best).toBe(11.9);
+    const sell = await fetchPriceForAmount(async () => res({ data: ads([11.8, 11.9, 11.85]).data, total: 3 }), 'SELL', 1000);
+    expect(sell.best).toBe(11.9);
   });
   it('says when no ad accepts the amount', async () => {
     const r = await fetchPriceForAmount(async () => res({ data: [], total: 0 }), 'SELL', 9999999);

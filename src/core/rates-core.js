@@ -33,13 +33,16 @@ export function pickLanguage(setting, deviceLanguage) {
   return /^es\b/i.test(String(deviceLanguage || 'es')) ? 'es' : 'en';
 }
 
-// "12,00" -> 12 ; "1.234,56" -> 1234.56 ; "12.45" -> 12.45
+// "12,00" -> 12 ; "1.234,56" -> 1234.56 ; "1,234.56" -> 1234.56 ; "12.45" -> 12.45 ; "" -> NaN
 export function parseLocaleNumber(text) {
-  if (typeof text === 'number') return text;
+  if (typeof text === 'number') return Number.isFinite(text) ? text : NaN;
   if (typeof text !== 'string') return NaN;
   let s = text.trim().replace(/\s/g, '');
-  if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
-  else if (s.includes(',')) s = s.replace(',', '.');
+  if (!s) return NaN;
+  if (s.includes(',') && s.includes('.')) {
+    // the last separator is the decimal one
+    s = s.lastIndexOf('.') > s.lastIndexOf(',') ? s.replace(/,/g, '') : s.replace(/\./g, '').replace(',', '.');
+  } else if (s.includes(',')) s = s.replace(',', '.');
   const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
 }
@@ -61,7 +64,12 @@ export function parseAmountInput(text, lang) {
   } else {
     const sep = s.includes('.') ? '.' : s.includes(',') ? ',' : '';
     const parts = sep ? s.split(sep) : [s];
-    if (parts.length > 2) plain = parts.join(''); // "1.000.000"
+    if (parts.length > 2) {
+      // "1.000.000": only valid as the language's thousands separator with groups of 3 digits
+      const groups = sep === thousands && parts[0].length >= 1 && parts[0].length <= 3 && parts.slice(1).every((p) => p.length === 3);
+      if (!groups) return NaN;
+      plain = parts.join('');
+    }
     else if (parts.length === 2 && sep === thousands && parts[1].length === 3 && parts[0] !== '') plain = parts.join('');
     else plain = parts.join('.');
   }
@@ -72,7 +80,10 @@ export function htmlToText(html) {
   return String(html)
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]{1,6});/gi, (m, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d{1,7});/g, (m, dec) => String.fromCodePoint(Number(dec)))
     .replace(/&nbsp;/gi, ' ')
     .replace(/&aacute;/g, 'á').replace(/&eacute;/g, 'é').replace(/&iacute;/g, 'í')
     .replace(/&oacute;/g, 'ó').replace(/&uacute;/g, 'ú').replace(/&ntilde;/g, 'ñ')
@@ -92,12 +103,17 @@ export function parseBcbHome(html) {
   const text = htmlToText(html);
   const start = text.search(/tipo de cambio oficial/i);
   if (start < 0) throw new Error('BCB: no se encontró "Tipo de cambio oficial"');
-  const block = text.slice(start, start + 400);
+  let block = text.slice(start, start + 400);
+  // The block ends where the next link or indicator starts (gold, UFV...): without this, a missing
+  // value would make the parser take "3.845,96" (gold) as the dollar rate.
+  const end = block.search(/m[aá]s informaci[oó]n|tabla de cotizaciones|microdatos/i);
+  if (end > 0) block = block.slice(0, end);
   // Since the flexible rate (2026) the page shows one date: "MARTES 17 DE NOVIEMBRE, 2026 Bs 11,70"
   const validityMatch = block.match(/VIGENTE\s+PARA\s+(.+?\d{4})/i) ||
     block.match(/((?:(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s+)?\d{1,2}\s+de\s+[a-zñ]+,?\s+\d{4})/i);
   const afterValidity = validityMatch ? block.slice(block.indexOf(validityMatch[0]) + validityMatch[0].length) : block;
-  const rateMatch = afterValidity.match(/(\d{1,2}[.,]\d{2,4})/);
+  // A whole number like 11,70, never digits taken out of a bigger one (no lookbehind: older JS engines)
+  const rateMatch = afterValidity.match(/(?:^|[^\d.,])(\d{1,2}[.,]\d{2,4})(?![\d.,])/);
   if (!rateMatch) throw new Error('BCB: no se encontró el valor');
   const rate = parseLocaleNumber(rateMatch[1]);
   if (!isPlausibleRate(rate)) throw new Error('BCB: valor fuera de rango (' + rateMatch[1] + ')');
@@ -173,10 +189,26 @@ export async function readText(res) {
   return JSON.stringify(res && res.data);
 }
 
+// A site that never answers must not block the reading: after this time the backup source is used.
+export const FETCH_TIMEOUT_MS = 15000;
+
+// Rejects if `promise` takes longer than `ms`. Works in the app and in the background runner
+// (which has setTimeout but no AbortController, so the request itself is not cancelled).
+export function withTimeout(promise, ms, url) {
+  if (typeof setTimeout !== 'function') return promise;
+  let timer;
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error('Sin respuesta en ' + Math.round(ms / 1000) + ' s: ' + url)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function getText(fetchFn, url, options) {
-  const res = await fetchFn(url, options);
-  if (res && res.ok === false) throw new Error('HTTP ' + res.status + ' en ' + url);
-  return await readText(res);
+  return withTimeout((async () => {
+    const res = await fetchFn(url, options);
+    if (res && res.ok === false) throw new Error('HTTP ' + res.status + ' en ' + url);
+    return await readText(res);
+  })(), FETCH_TIMEOUT_MS, url);
 }
 
 export async function getJson(fetchFn, url, options) {
@@ -208,7 +240,7 @@ export async function fetchBinanceSide(fetchFn, tradeType, rows) {
 }
 
 // Price for a real trade of `fiatAmount` Bs: the best `rows` ads that accept that amount, best first.
-// Returns { best, median, count, total }: best = price of the first ad, count = ads used,
+// Returns { best, median, count, total }: best = best price among those ads, count = ads used,
 // total = all ads that accept the amount (null if Binance does not say). count 0 = no ad accepts it.
 export async function fetchPriceForAmount(fetchFn, tradeType, fiatAmount, rows) {
   const n = rows || 5;
@@ -220,7 +252,8 @@ export async function fetchPriceForAmount(fetchFn, tradeType, fiatAmount, rows) 
   const total = json && Number.isFinite(json.total) ? json.total : null;
   if (json && Array.isArray(json.data) && !json.data.length) return { best: NaN, median: NaN, count: 0, total: 0 };
   const prices = parseBinanceAds(json).slice(0, n);
-  return { best: prices[0], median: median(prices), count: prices.length, total };
+  const best = tradeType === 'BUY' ? Math.min(...prices) : Math.max(...prices);
+  return { best, median: median(prices), count: prices.length, total };
 }
 
 // Third-party sites label compra/venta from different points of view, so the sides are
@@ -259,6 +292,7 @@ export async function fetchSnapshot(fetchFn, settings, now) {
     day: localDay(at),
     bcb: bcb.status === 'fulfilled' ? bcb.value : null,
     p2p: p2p.status === 'fulfilled' ? p2p.value : null,
+    failed: [bcb.status === 'rejected' ? 'bcb' : null, p2p.status === 'rejected' ? 'p2p' : null].filter(Boolean),
     errors: [
       bcb.status === 'rejected' ? String(bcb.reason && bcb.reason.message || bcb.reason) : null,
       p2p.status === 'rejected' ? String(p2p.reason && p2p.reason.message || p2p.reason) : null,
@@ -291,7 +325,7 @@ export function historyValue(entry, side) {
 
 export function addDays(day, n) {
   const [y, m, d] = String(day).split('-').map(Number);
-  return localDay(new Date(y, m - 1, d + n));
+  return localDay(new Date(y, m - 1, d + n, 12)); // noon: a daylight saving change cannot move the day
 }
 
 // Latest history day before `today` (usually yesterday), or null
@@ -350,13 +384,14 @@ export function fmtNumber(n, decimals, lang) {
   const fixed = Math.abs(n).toFixed(d);
   const parts = fixed.split('.');
   const int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, en ? ',' : '.');
-  return (n < 0 ? '−' : '') + int + (parts[1] ? (en ? '.' : ',') + parts[1] : '');
+  return (n < 0 && Number(fixed) !== 0 ? '−' : '') + int + (parts[1] ? (en ? '.' : ',') + parts[1] : '');
 }
 
 export function fmtPercent(ratio, lang) {
   if (!Number.isFinite(ratio)) return '—';
-  const sign = ratio > 0 ? '+' : ratio < 0 ? '−' : '';
-  return sign + fmtNumber(Math.abs(ratio) * 100, 1, lang) + '%';
+  const pct = Math.abs(ratio) * 100;
+  const sign = Number(pct.toFixed(1)) === 0 ? '' : ratio > 0 ? '+' : '−';
+  return sign + fmtNumber(pct, 1, lang) + '%';
 }
 
 export function notificationText(snapshot, settings) {

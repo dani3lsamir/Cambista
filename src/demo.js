@@ -3,6 +3,7 @@
 // the Android app does not have that limit because requests go through native code.
 // Copyright (C) 2026 dani3lsamir
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { localDay } from './core/rates-core.js';
 
 const BCB_HTML = `<div class="tc"><h3>Tipo de cambio oficial</h3><p>Bolivianos por dólar estadounidense</p>
 <p>MARTES 17 DE NOVIEMBRE, 2026</p><span>Bs</span> --> <strong>11,70</strong></div>`;
@@ -30,7 +31,7 @@ export function demoHistory() {
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const day = d.toISOString().slice(0, 10);
+    const day = localDay(d); // the phone's day, not UTC (after 20:00 in Bolivia UTC is already tomorrow)
     const t = 29 - i;
     const bcb = 11.6 + t * 0.014;
     const mid = bcb + 0.35 + Math.sin(t / 3) * 0.08;

@@ -62,6 +62,7 @@ describe('history import', () => {
   });
 
   it('rejects files that are not a Cambista history', () => {
+    expect(() => parseHistoryCsv('')).toThrow(expect.objectContaining({ code: 'errEmptyFile' }));
     expect(() => parseHistoryCsv('')).toThrow(/vacío/);
     expect(() => parseHistoryCsv('Nombre;Monto\nAna;10\n')).toThrow(/Cambista/);
   });
@@ -92,5 +93,21 @@ describe('settings export and import', () => {
     expect(() => parseSettingsJson('nope')).toThrow(/JSON/);
     expect(() => parseSettingsJson('{"theme":"dark"}')).toThrow(/Cambista/);
     expect(() => parseSettingsJson(JSON.stringify({ app: 'cambista', kind: 'settings', settings: { theme: 'neon' } }))).toThrow(/válidos/);
+  });
+});
+
+describe('history import from spreadsheets', () => {
+  it('reads quoted cells with decimal commas in a comma-separated file', () => {
+    const csv = 'Fecha,Oficial BCB,P2P compra,P2P venta\n2026-10-05,"12,00","12,50","12,30"\n"2026-10-06","12,10",,\n';
+    const { entries, skipped } = parseHistoryCsv(csv);
+    expect(skipped).toBe(0);
+    expect(entries[0]).toEqual({ day: '2026-10-05', bcb: 12, buy: 12.5, sell: 12.3, mid: 12.4 });
+    expect(entries[1]).toEqual({ day: '2026-10-06', bcb: 12.1 });
+  });
+
+  it('rejects impossible years', () => {
+    const { entries, skipped } = parseHistoryCsv('Fecha;Oficial BCB\n0050-01-01;12,00\n2026-02-30;12,00\n');
+    expect(entries).toEqual([]);
+    expect(skipped).toBe(2);
   });
 });
