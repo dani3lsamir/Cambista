@@ -8,7 +8,7 @@ import {
 } from './core/rates-core.js';
 import {
   isNative, loadSettings, saveSettings, loadLatest, loadHistory, applySnapshots,
-  clearHistory, importHistory, drainRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings, shareFile,
+  clearHistory, importHistory, pullRunner, runRunnerNow, ensureNotificationPermission, syncRunnerSettings, shareFile,
 } from './store.js';
 import {
   historyToCsv, exportFileName, parseHistoryCsv, settingsToJson, settingsFileName, parseSettingsJson,
@@ -136,9 +136,8 @@ async function refresh({ silent = false } = {}) {
 }
 
 async function pullBackground() {
-  const snaps = await drainRunner();
-  if (snaps.length) {
-    const r = await applySnapshots(snaps);
+  const r = await pullRunner();
+  if (r) {
     state.latest = r.latest;
     state.history = r.history;
   }

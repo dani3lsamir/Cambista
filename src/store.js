@@ -129,15 +129,20 @@ export async function syncRunnerSettings(settings) {
   }
 }
 
-// Pulls readings the runner took while the app was closed.
-export async function drainRunner() {
-  if (!isNative()) return [];
+// Adds the readings the runner took while the app was closed. They are removed from the runner
+// only after they are saved here. Returns { latest, history }, or null if there was nothing new.
+export async function pullRunner() {
+  if (!isNative()) return null;
   try {
-    const r = await BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'drain', details: {} });
-    return (r && r.snapshots) || [];
+    const r = await BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'drain', details: { peek: true } });
+    const snapshots = (r && r.snapshots) || [];
+    if (!snapshots.length) return null;
+    const applied = await applySnapshots(snapshots);
+    await BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'ackDrain', details: { count: snapshots.length } });
+    return applied;
   } catch (e) {
-    console.warn('runner drain failed', e);
-    return [];
+    console.warn('runner pull failed', e);
+    return null;
   }
 }
 

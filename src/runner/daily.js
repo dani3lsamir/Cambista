@@ -12,7 +12,9 @@
 const KV_SETTINGS = 'settings';
 const KV_LAST_DAY = 'lastRunDay';
 const KV_PENDING = 'pending';
+const KV_ATTEMPTS = 'attempts'; // { day, n }: tries today that got only one of the two sources
 const MAX_PENDING = 60;
+const MAX_PARTIAL_ATTEMPTS = 4; // with one source down, retry about every 30 min, up to 4 times
 const NOTIFICATION_ID = 1001;
 
 function kvGet(key, fallback) {
@@ -45,15 +47,23 @@ function notify(snapshot, settings) {
   ]);
 }
 
+// The day counts as done when both sources answered, or when one of them is still down after
+// MAX_PARTIAL_ATTEMPTS tries. Until then the next check (about 30 min later) tries again, and the
+// notification waits, so it is sent once a day with as much data as possible.
 async function runUpdate(forceNotify) {
   const settings = Object.assign({}, DEFAULT_SETTINGS, kvGet(KV_SETTINGS, {}));
   const snapshot = await fetchSnapshot(fetch, settings, new Date());
   const ok = !!(snapshot.bcb || snapshot.p2p);
+  let done = false;
   if (ok) {
     savePending(snapshot);
-    kvSet(KV_LAST_DAY, snapshot.day);
+    const prev = kvGet(KV_ATTEMPTS, null);
+    const n = (prev && prev.day === snapshot.day ? prev.n : 0) + 1;
+    kvSet(KV_ATTEMPTS, { day: snapshot.day, n });
+    done = !!(snapshot.bcb && snapshot.p2p) || n >= MAX_PARTIAL_ATTEMPTS;
+    if (done) kvSet(KV_LAST_DAY, snapshot.day);
   }
-  if ((ok && settings.notify) || forceNotify) notify(snapshot, settings);
+  if ((done && settings.notify) || forceNotify) notify(snapshot, settings);
   return { ok, snapshot };
 }
 
@@ -80,12 +90,25 @@ addEventListener('saveSettings', (resolve, reject, args) => {
   }
 });
 
-// The app collects readings taken in the background and adds them to its history
-addEventListener('drain', (resolve, reject) => {
+// The app collects readings taken in the background and adds them to its history.
+// With { peek: true } they stay here until the app confirms it saved them ('ackDrain'), so a
+// crash between the two steps loses nothing.
+addEventListener('drain', (resolve, reject, args) => {
   try {
     const list = kvGet(KV_PENDING, []);
-    kvSet(KV_PENDING, []);
+    if (!(args && args.peek)) kvSet(KV_PENDING, []);
     resolve({ snapshots: list, lastRunDay: kvGet(KV_LAST_DAY, null) });
+  } catch (e) {
+    reject(e);
+  }
+});
+
+// The app saved the first `count` pending readings: remove them (newer ones stay)
+addEventListener('ackDrain', (resolve, reject, args) => {
+  try {
+    const count = Number(args && args.count) || 0;
+    kvSet(KV_PENDING, kvGet(KV_PENDING, []).slice(count));
+    resolve({ ok: true });
   } catch (e) {
     reject(e);
   }
