@@ -84,9 +84,10 @@ function validityText(validity) {
     .replace(/\s+/g, ' ').replace(/\s,/g, ',').trim();
 }
 
-// Source names come from rates-core in Spanish, e.g. "DolarApi (respaldo)"
+// Source names come from rates-core in Spanish, e.g. "DolarApi (respaldo)".
+// paralelo.bo data is CC BY 4.0: its name always carries the licence where its data is shown.
 function sourceName(name) {
-  return String(name).replace('(respaldo)', `(${t('backup')})`);
+  return String(name).replace('(respaldo)', `(${t('backup')})`).replace(/^paralelo\.bo\b/, 'paralelo.bo · CC BY 4.0');
 }
 
 // Amount typed in the calculator ("100.50" and "100,50" both work in either language)
@@ -108,6 +109,8 @@ function applyTheme() {
   const t = state.settings.theme;
   if (t === 'system') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', t);
+  const dark = t === 'dark' || (t === 'system' && !window.matchMedia('(prefers-color-scheme: light)').matches);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#000000' : '#f2f2f5');
 }
 
 // ---------------------------------------------------------------- icons (own, 24px stroke)
@@ -357,20 +360,22 @@ function chart(history) {
   let min = Math.min(...vals), max = Math.max(...vals);
   const pad = (max - min) * 0.15 || 0.1;
   min -= pad; max += pad;
-  const W = 320, H = 160;
+  const W = 320, H = 140;
   const x = (i) => (i / (pts.length - 1)) * (W - 8) + 4;
-  const y = (v) => H - 18 - ((v - min) / (max - min)) * (H - 30);
+  const y = (v) => H - 6 - ((v - min) / (max - min)) * (H - 12);
   const line = (key) => pts.map((h, i) => (Number.isFinite(h[key]) ? `${x(i).toFixed(1)},${y(h[key]).toFixed(1)}` : null)).filter(Boolean).join(' ');
   return `
   <section class="card chart">
-    <div class="legend"><span><i style="background:var(--text-2)"></i>${t('chartOfficial')}</span><span><i style="background:var(--accent)"></i>${t('chartP2p')}</span></div>
+    <div class="chart-head">
+      <div class="legend"><span><i style="background:var(--text-2)"></i>${t('chartOfficial')}</span><span><i style="background:var(--accent)"></i>${t('chartP2p')}</span></div>
+      <div class="chart-range num">${fmtNumber(Math.min(...vals))} – ${fmtNumber(Math.max(...vals))}</div>
+    </div>
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('chartLabel', { n: pts.length })}">
-      <line x1="0" x2="${W}" y1="${H - 18}" y2="${H - 18}" stroke="var(--line)" />
+      <line x1="0" x2="${W}" y1="${H - 1}" y2="${H - 1}" stroke="var(--line)" vector-effect="non-scaling-stroke" />
       <polyline points="${line('bcb')}" fill="none" stroke="var(--text-2)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
       <polyline points="${line('mid')}" fill="none" stroke="var(--accent)" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
-      <text x="2" y="${H - 4}" font-size="10" fill="var(--text-3)">${esc(prettyDay(pts[0].day))}</text>
-      <text x="${W - 2}" y="${H - 4}" font-size="10" fill="var(--text-3)" text-anchor="end">${esc(prettyDay(pts[pts.length - 1].day))}</text>
     </svg>
+    <div class="chart-dates"><span>${esc(prettyDay(pts[0].day))}</span><span>${esc(prettyDay(pts[pts.length - 1].day))}</span></div>
   </section>`;
 }
 
@@ -465,11 +470,33 @@ function tabbar() {
   return `<nav class="tabbar"><div class="tabbar-inner">${tabs.map(([k, l]) => `<button class="tab ${state.tab === k ? 'on' : ''}" data-tab="${k}">${svg(k)}${l}</button>`).join('')}</div></nav>`;
 }
 
+let renderedTab = null;
+
 function render() {
   const screens = { today: screenToday, calc: screenCalc, history: screenHistory, settings: screenSettings };
   const scroll = window.scrollY;
+  // A refresh that ends while the amount is being typed must not close the keyboard
+  const typing = document.activeElement?.id === 'amount' ? document.activeElement : null;
+  const caret = typing ? [typing.selectionStart, typing.selectionEnd] : null;
   root.innerHTML = screens[state.tab]() + tabbar() + sheet();
+  if (state.tab !== renderedTab) root.querySelector('.screen')?.classList.add('enter'); // fade in only on a new tab
+  renderedTab = state.tab;
   window.scrollTo(0, scroll);
+  const amount = typing && document.getElementById('amount');
+  if (amount) {
+    amount.focus({ preventScroll: true });
+    try { amount.setSelectionRange(...caret); } catch { /* inputmode=decimal may not allow it */ }
+  }
+}
+
+// Android back button: close the sheet, then go back to Today, then leave the app
+function goBack() {
+  if (state.sheet) state.sheet = null;
+  else if (state.tab !== 'today') {
+    state.tab = 'today';
+    window.scrollTo(0, 0);
+  } else return App.exitApp();
+  render();
 }
 
 // ---------------------------------------------------------------- events
@@ -650,6 +677,7 @@ async function boot() {
   if (needsRefresh()) refresh({ silent: true });
 
   if (isNative()) {
+    App.addListener('backButton', goBack);
     App.addListener('resume', async () => {
       await pullBackground();
       render();
