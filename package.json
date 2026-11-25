@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "node scripts/build-runner.mjs && vite",
     "build": "node scripts/build-runner.mjs && vite build",
+    "dev:web": "vite web --config vite.config.js",
+    "build:web": "vite build web --config vite.config.js --outDir ../dist-web --emptyOutDir",
+    "preview:web": "vite preview web --config vite.config.js --outDir ../dist-web",
     "test": "vitest run",
     "android:prepare": "node scripts/prepare-android.mjs"
   },

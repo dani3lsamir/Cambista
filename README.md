@@ -3,7 +3,7 @@
 
 <a href="https://github.com/dani3lsamir/cambista/releases/latest"><img alt="Download the APK from GitHub Releases" src="https://img.shields.io/badge/Download-APK-f0b43c?style=for-the-badge&logo=android&logoColor=white" height="40"/></a>
 
-Meet Cambista: the US dollar exchange rate in Bolivia, on your phone. See the **official BCB rate** next to the **parallel P2P rate (USDT on Binance)**, the **gap** between them, and a calculator that tells you how much you really get. It updates itself once a day, at the time you choose, and sends you a notification.
+Follow Bolivia’s US dollar exchange rate with Cambista on Android and the web. See the **official BCB rate**, the **Binance P2P rate (USDT)**, and the **gap** between them. Use the calculator to estimate what you would receive. On Android, you can pick a time for the daily update and get a notification.
 
 📊 **OFFICIAL VS PARALLEL AT A GLANCE:**
 The Today screen shows the official rate from the Central Bank of Bolivia (with its validity dates), the P2P buy, sell and average prices, and the gap = P2P / BCB − 1, explained in plain words. It also shows how much each rate moved since yesterday and whether today's P2P price is cheap or expensive compared with the last 7 and 30 days.
@@ -25,7 +25,7 @@ If a main source fails, Cambista falls back to another one and tells you which s
 | Official dollar | Home page of the [BCB](https://www.bcb.gob.bo/) ("Tipo de cambio oficial") | DolarApi `/v1/dolares/oficial` |
 | Parallel dollar | Binance P2P USDT/BOB: median of the first N buy and sell ads | [paralelo.bo](https://paralelo.bo/api) (data under CC BY 4.0), then DolarApi |
 
-🔐 **PRIVACY FIRST:**
+🔐 **ANDROID PRIVACY:**
 No accounts, no analytics, no location permission, no server. Your settings and history never leave your phone.
 
 🌐 **SPANISH & ENGLISH:**
@@ -42,7 +42,11 @@ Dark (pure black, easy on OLED screens) and light themes, or follow the system, 
 </div>
 <p align="center"><sub>Screenshots with sample data.</sub></p>
 
-## Install
+## Use Cambista in your browser
+
+Open [Cambista Web](https://dani3lsamir.github.io/Cambista/) to compare the official BCB rate with Binance P2P, convert an amount and explore the rate history. GitHub Actions collects the quotes at 30-minute intervals. The page shows the time of the latest observation.
+
+## Install on Android
 
 1. On your phone, open the [latest release](https://github.com/dani3lsamir/cambista/releases/latest) and download `Cambista.apk`.
 2. Open the APK on your Android phone and allow "install unknown apps" for your browser or file manager.
