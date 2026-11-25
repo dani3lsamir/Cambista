@@ -10,7 +10,7 @@ on:
       - 'src/core/rates-core.js'
       - 'src/demo.js'
       - 'src/i18n.js'
-      - 'resources/icon.svg'
+      - 'resources/brand/**'
       - 'scripts/collect-market.mjs'
       - 'vite.config.js'
       - 'package*.json'
