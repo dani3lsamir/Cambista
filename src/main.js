@@ -27,7 +27,7 @@ const state = {
   latest: { bcb: null, p2p: null },
   history: [],
   loading: false,
-  errors: [],
+  failed: [], // sources that failed in the last refresh: 'bcb' | 'p2p'
   calc: { dir: 'usd2bs', amount: '100', live: null }, // live: { key, loading, result, failed }
   sheet: null,
 };
@@ -92,6 +92,9 @@ function sourceName(name) {
 // Amount typed in the calculator ("100.50" and "100,50" both work in either language)
 const parseAmount = (text) => parseAmountInput(text, lang());
 
+// Message of an error in the user's language: errors from our own code carry a `code` (a key in i18n.js)
+const errorText = (err) => (err?.code ? t(err.code) : err?.message || String(err));
+
 function toast(msg) {
   document.querySelector('.toast')?.remove();
   const el = document.createElement('div');
@@ -129,10 +132,10 @@ async function refresh({ silent = false } = {}) {
   const r = await applySnapshots([snap]);
   state.latest = r.latest;
   state.history = r.history;
-  state.errors = snap.errors;
+  state.failed = snap.failed;
   state.loading = false;
   render();
-  if (!silent && !snap.errors.length) toast(t('updated'));
+  if (!silent && !snap.failed.length) toast(t('updated'));
 }
 
 async function pullBackground() {
@@ -214,10 +217,10 @@ function screenToday() {
       </div>
     </section>
 
-    ${state.errors.length ? `<div class="notice err">${t('partialError')}<br><span style="color:var(--text-3)">${state.errors.map(esc).join('<br>')}</span></div>` : ''}
+    ${state.failed.length ? `<div class="notice err">${t('partialError')}<br><span style="color:var(--text-3)">${state.failed.map((f) => t(f === 'bcb' ? 'failedBcb' : 'failedP2p')).join('<br>')}</span></div>` : ''}
 
     <div class="status">
-      <span class="dot ${state.errors.length ? 'err' : stale ? 'stale' : ''}"></span>
+      <span class="dot ${state.failed.length ? 'err' : stale ? 'stale' : ''}"></span>
       ${lastAt ? t('lastUpdate', { time: clock(lastAt), ago: ago(lastAt) }) : t('firstRefresh')}
     </div>
   </main>`;
@@ -479,6 +482,8 @@ async function updateSetting(key, value) {
   render();
 }
 
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024; // a Cambista CSV of five years is about 200 KB
+
 // The file input lives outside #app: Android re-renders the screen when it comes back from the
 // file picker, and an input inside #app would be gone before it reports the chosen file.
 function pickFile(accept, onText) {
@@ -488,9 +493,10 @@ function pickFile(accept, onText) {
     input.remove();
     if (!file) return;
     try {
+      if (file.size > MAX_IMPORT_BYTES) throw Object.assign(new Error('too large'), { code: 'errFileTooLarge' });
       await onText(await file.text());
     } catch (err) {
-      toast(t('importFailed', { msg: err?.message || err }));
+      toast(t('importFailed', { msg: errorText(err) }));
     }
   });
   input.addEventListener('cancel', () => input.remove());
@@ -556,7 +562,7 @@ root.addEventListener('click', async (e) => {
         });
         if (shared && !isNative()) toast(t('downloaded'));
       } catch (err) {
-        toast(t('exportFailed', { msg: err?.message || err }));
+        toast(t('exportFailed', { msg: errorText(err) }));
       }
       break;
     case 'import': pickImportFile(); break;
@@ -567,7 +573,7 @@ root.addEventListener('click', async (e) => {
         }, 'application/json');
         if (shared && !isNative()) toast(t('settingsDownloaded'));
       } catch (err) {
-        toast(t('exportFailed', { msg: err?.message || err }));
+        toast(t('exportFailed', { msg: errorText(err) }));
       }
       break;
     case 'import-settings': pickSettingsFile(); break;
@@ -594,7 +600,7 @@ root.addEventListener('click', async (e) => {
         render();
         toast(r && r.ok ? t('bgDone') : t('bgFailed'));
       } catch (err) {
-        toast(t('error', { msg: err?.message || err }));
+        toast(t('error', { msg: errorText(err) }));
       }
       break;
   }

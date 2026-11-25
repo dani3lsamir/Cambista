@@ -292,6 +292,7 @@ export async function fetchSnapshot(fetchFn, settings, now) {
     day: localDay(at),
     bcb: bcb.status === 'fulfilled' ? bcb.value : null,
     p2p: p2p.status === 'fulfilled' ? p2p.value : null,
+    failed: [bcb.status === 'rejected' ? 'bcb' : null, p2p.status === 'rejected' ? 'p2p' : null].filter(Boolean),
     errors: [
       bcb.status === 'rejected' ? String(bcb.reason && bcb.reason.message || bcb.reason) : null,
       p2p.status === 'rejected' ? String(p2p.reason && p2p.reason.message || p2p.reason) : null,

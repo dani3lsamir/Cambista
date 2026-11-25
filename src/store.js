@@ -9,7 +9,7 @@ import { Share } from '@capacitor/share';
 import { DEFAULT_SETTINGS, pickLanguage } from './core/rates-core.js';
 
 export const RUNNER_LABEL = 'bo.cambista.app.daily';
-const MAX_HISTORY = 400;
+const MAX_HISTORY = 1825; // five years of daily readings (about 150 KB)
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -47,8 +47,21 @@ export async function loadHistory() {
   return read('history', []);
 }
 
+// Read-modify-write steps on the history run one after another, so a refresh and a background
+// pull that finish at the same time cannot overwrite each other's days.
+let queue = Promise.resolve();
+function serialized(fn) {
+  const run = queue.then(fn, fn);
+  queue = run.catch(() => {});
+  return run;
+}
+
 // Applies one or more snapshots (oldest first) to "latest" and to the daily history.
-export async function applySnapshots(snapshots) {
+export function applySnapshots(snapshots) {
+  return serialized(() => applyNow(snapshots));
+}
+
+async function applyNow(snapshots) {
   const latest = await loadLatest();
   const history = await loadHistory();
   for (const s of snapshots) {
@@ -80,17 +93,21 @@ function upsertDay(history, s) {
 }
 
 // Adds imported days to the history. Days already on the phone are kept as they are.
-export async function importHistory(entries) {
-  const history = await loadHistory();
-  const known = new Set(history.map((h) => h.day));
-  const added = entries.filter((e) => !known.has(e.day));
-  const merged = [...history, ...added].sort((a, b) => (a.day < b.day ? -1 : 1)).slice(-MAX_HISTORY);
-  await write('history', merged);
-  return { history: merged, added: added.length, kept: entries.length - added.length };
+// `added` counts only the new days that fit in the history (the oldest go past MAX_HISTORY).
+export function importHistory(entries) {
+  return serialized(async () => {
+    const history = await loadHistory();
+    const known = new Set(history.map((h) => h.day));
+    const fresh = entries.filter((e) => !known.has(e.day));
+    const merged = [...history, ...fresh].sort((a, b) => (a.day < b.day ? -1 : 1)).slice(-MAX_HISTORY);
+    const kept = new Set(merged.map((h) => h.day));
+    await write('history', merged);
+    return { history: merged, added: fresh.filter((e) => kept.has(e.day)).length, kept: entries.length - fresh.length };
+  });
 }
 
-export async function clearHistory() {
-  await write('history', []);
+export function clearHistory() {
+  return serialized(() => write('history', []));
 }
 
 // Android: writes the file to the app's cache and opens the share menu (Drive, WhatsApp, Files…).
@@ -147,7 +164,7 @@ export async function pullRunner() {
 }
 
 export async function runRunnerNow() {
-  if (!isNative()) throw new Error('Solo funciona en la app de Android');
+  if (!isNative()) throw Object.assign(new Error('Solo funciona en la app de Android'), { code: 'errAndroidOnly' });
   return BackgroundRunner.dispatchEvent({ label: RUNNER_LABEL, event: 'runNow', details: {} });
 }
 

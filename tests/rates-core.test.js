@@ -197,6 +197,7 @@ describe('fetchSnapshot', () => {
     expect(s.bcb).toBeNull();
     expect(s.p2p).toBeNull();
     expect(s.errors.length).toBe(2);
+    expect(s.failed).toEqual(['bcb', 'p2p']);
   });
 });
 

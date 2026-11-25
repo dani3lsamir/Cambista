@@ -157,6 +157,15 @@ const TEXTS = {
     bgFailed: 'Falló la consulta en segundo plano',
     error: 'Error: {msg}',
     allowNotifications: 'Activa las notificaciones de Cambista en los ajustes de Android',
+    failedBcb: 'Oficial: el BCB y su respaldo no respondieron',
+    failedP2p: 'Paralelo: Binance y sus respaldos no respondieron',
+    errEmptyFile: 'el archivo está vacío',
+    errNotHistory: 'no es un historial de Cambista (faltan las columnas Fecha y Oficial BCB)',
+    errNotJson: 'el archivo no es un JSON válido',
+    errNotSettings: 'no es un archivo de ajustes de Cambista',
+    errNoSettings: 'el archivo no tiene ajustes válidos',
+    errFileTooLarge: 'el archivo es demasiado grande (máximo 2 MB)',
+    errAndroidOnly: 'solo funciona en la app de Android',
   },
 
   en: {
@@ -312,6 +321,15 @@ const TEXTS = {
     bgFailed: 'The background check failed',
     error: 'Error: {msg}',
     allowNotifications: 'Turn on Cambista notifications in Android settings',
+    failedBcb: 'Official: the BCB and its backup did not answer',
+    failedP2p: 'Parallel: Binance and its backups did not answer',
+    errEmptyFile: 'the file is empty',
+    errNotHistory: 'not a Cambista history (the Fecha and Oficial BCB columns are missing)',
+    errNotJson: 'the file is not valid JSON',
+    errNotSettings: 'not a Cambista settings file',
+    errNoSettings: 'the file has no valid settings',
+    errFileTooLarge: 'the file is too large (2 MB at most)',
+    errAndroidOnly: 'only works in the Android app',
   },
 };
 
