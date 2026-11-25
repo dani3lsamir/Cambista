@@ -1,16 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" fill="#0b0b0d"/>
-  <g transform="translate(-14 -40)">
-  <g fill="none" stroke="#f0b43c" stroke-width="64" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M300 410h400"/><path d="M590 300l110 110-110 110"/>
-    <path d="M724 614H324"/><path d="M434 504L324 614l110 110"/>
-  </g>
-  </g>
-  <defs><clipPath id="f"><circle cx="712" cy="722" r="84"/></clipPath></defs>
-  <circle cx="712" cy="722" r="96" fill="#0b0b0d"/>
-  <g clip-path="url(#f)">
-    <rect x="628" y="638" width="168" height="57.0" fill="#d52b1e"/>
-    <rect x="628" y="694.0" width="168" height="57.0" fill="#f9e300"/>
-    <rect x="628" y="750.0" width="168" height="57.0" fill="#007934"/>
-  </g>
+<!-- Copyright (C) 2026 dani3lsamir · SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <title>Cambista</title>
+  <rect width="96" height="96" fill="#171513"/>
+  <path fill="#F0B43C" transform="translate(15.375 12) scale(0.75)" d="M79 22.722 A40 40 0 1 0 77 75.55 V61 H65.748 A22 22 0 1 1 65.748 35 H79 Z"/>
 </svg>

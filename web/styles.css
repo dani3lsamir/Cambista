@@ -60,8 +60,9 @@ button, select { cursor: pointer; }
 .wrap { width: min(1120px, calc(100% - 48px)); margin-inline: auto; }
 .header { border-bottom: 1px solid var(--line); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; min-height: 70px; }
-.brand { display: inline-flex; align-items: center; gap: 11px; font-size: 1.25rem; font-weight: 750; letter-spacing: -.035em; text-decoration: none; }
-.brand img { border-radius: 9px; }
+.brand img { display: block; width: auto; height: 34px; }
+.brand .brand-dark, :root[data-theme='dark'] .brand-light { display: none; }
+:root[data-theme='dark'] .brand-dark { display: block; }
 .header-controls { display: flex; gap: 8px; }
 .language, .theme-toggle { background: transparent; border: 1px solid var(--line); border-radius: 8px; min-width: 44px; min-height: 40px; color: var(--muted); font-size: .85rem; font-weight: 700; }
 .theme-toggle { font-size: 1.16rem; }

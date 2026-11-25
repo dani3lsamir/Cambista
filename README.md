@@ -55,6 +55,8 @@ New versions install over the old one without losing your history.
 
 ## For developers
 
+The [Cambista brand guide](docs/branding.md) includes the logo, favicon and Android icon files.
+
 Build, test and project structure notes (in Spanish) are in [docs/DESARROLLO.md](docs/DESARROLLO.md). Planned features are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Disclaimer
