@@ -5,7 +5,6 @@ import { lang, t } from '../src/i18n.js';
 import { BOLIVIA_TIME_ZONE, boliviaDay } from './market.js';
 
 const DAY = 24 * 60 * 60 * 1000;
-const colors = { bcb: '#126967', mid: '#a56808' };
 
 export function rateChart(canvas, reading) {
   const ctx = canvas.getContext('2d');
@@ -32,9 +31,15 @@ export function rateChart(canvas, reading) {
     chartWidth = width;
     ctx.setTransform(density, 0, 0, density, 0, 0);
     ctx.font = '12px system-ui';
+    const css = getComputedStyle(canvas);
+    const colors = {
+      bcb: css.getPropertyValue('--official-line').trim(),
+      mid: css.getPropertyValue('--market-line').trim(),
+    };
+    const muted = css.getPropertyValue('--muted').trim();
     const values = points.flatMap((p) => [p.bcb, p.mid]).filter(isPlausibleRate);
     if (!values.length) {
-      ctx.fillStyle = '#60594c';
+      ctx.fillStyle = muted;
       ctx.textAlign = 'center';
       ctx.fillText(t('webChartEmpty'), width / 2, height / 2);
       reading.textContent = '';
@@ -57,8 +62,8 @@ export function rateChart(canvas, reading) {
       ctx.lineTo(x2, y2);
       ctx.stroke();
     };
-    ctx.fillStyle = '#60594c';
-    ctx.strokeStyle = '#e7e1d5';
+    ctx.fillStyle = muted;
+    ctx.strokeStyle = css.getPropertyValue('--line').trim();
     ctx.textAlign = 'right';
     for (let tick = min; tick <= max + step / 4; tick += step) {
       grid(left, y(tick), width - right, y(tick));
