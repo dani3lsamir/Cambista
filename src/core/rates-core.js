@@ -189,10 +189,26 @@ export async function readText(res) {
   return JSON.stringify(res && res.data);
 }
 
+// A site that never answers must not block the reading: after this time the backup source is used.
+export const FETCH_TIMEOUT_MS = 15000;
+
+// Rejects if `promise` takes longer than `ms`. Works in the app and in the background runner
+// (which has setTimeout but no AbortController, so the request itself is not cancelled).
+export function withTimeout(promise, ms, url) {
+  if (typeof setTimeout !== 'function') return promise;
+  let timer;
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error('Sin respuesta en ' + Math.round(ms / 1000) + ' s: ' + url)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function getText(fetchFn, url, options) {
-  const res = await fetchFn(url, options);
-  if (res && res.ok === false) throw new Error('HTTP ' + res.status + ' en ' + url);
-  return await readText(res);
+  return withTimeout((async () => {
+    const res = await fetchFn(url, options);
+    if (res && res.ok === false) throw new Error('HTTP ' + res.status + ' en ' + url);
+    return await readText(res);
+  })(), FETCH_TIMEOUT_MS, url);
 }
 
 export async function getJson(fetchFn, url, options) {

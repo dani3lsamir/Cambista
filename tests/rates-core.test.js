@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
   fmtNumber, fmtPercent, notificationText, notificationTitle, orderSides, p2pReference, pickLanguage, SOURCES,
-  parseAmountInput, parseParaleloBo, fetchPriceForAmount, binanceRequestBody, compareWithPast, historyValue, addDays, lastDayBefore,
+  parseAmountInput, parseParaleloBo, fetchPriceForAmount, binanceRequestBody, withTimeout, FETCH_TIMEOUT_MS, compareWithPast, historyValue, addDays, lastDayBefore,
 } from '../src/core/rates-core.js';
 
 const BCB_HTML = `<html><body><div class="block"><h2>Tipo de cambio oficial</h2>
@@ -166,6 +166,30 @@ describe('fetchSnapshot', () => {
     };
     const s = await fetchSnapshot(fetchFn, {}, new Date());
     expect(s.p2p).toMatchObject({ buy: 11.92, sell: 11.86, mid: 11.89, source: 'paralelo.bo (respaldo)' });
+  });
+
+  it('gives up on a site that never answers', async () => {
+    await expect(withTimeout(new Promise(() => {}), 20, 'https://x')).rejects.toThrow(/Sin respuesta/);
+    await expect(withTimeout(Promise.resolve('ok'), 20, 'https://x')).resolves.toBe('ok');
+    expect(FETCH_TIMEOUT_MS).toBeGreaterThanOrEqual(10000);
+  });
+
+  it('uses the backup when the BCB hangs', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchFn = (url) => {
+        if (url === SOURCES.bcb) return new Promise(() => {});
+        if (url === SOURCES.dolarapiOficial) return Promise.resolve(res({ compra: 11.7, venta: 11.7 }));
+        if (url === SOURCES.binance) return Promise.resolve(res(ads([11.9, 11.92])));
+        return Promise.reject(new Error('unexpected ' + url));
+      };
+      const pending = fetchSnapshot(fetchFn, { adsCount: 2 }, new Date());
+      await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS + 10);
+      const s = await pending;
+      expect(s.bcb).toMatchObject({ rate: 11.7, source: 'DolarApi (respaldo)' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('never throws: reports errors per source', async () => {
