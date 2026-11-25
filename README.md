@@ -44,7 +44,7 @@ Dark (pure black, easy on OLED screens) and light themes, or follow the system, 
 
 ## Use Cambista in your browser
 
-Open [Cambista Web](https://dani3lsamir.github.io/Cambista/) to compare the official BCB rate with Binance P2P, convert an amount and explore the rate history. GitHub Actions collects the quotes at 30-minute intervals. The page shows the time of the latest observation.
+Open [Cambista Web](https://dani3lsamir.github.io/cambista/) to compare the official BCB rate with Binance P2P, convert an amount and explore the rate history. GitHub Actions collects the quotes at 30-minute intervals. The page shows the time of the latest observation.
 
 ## Install on Android
 
