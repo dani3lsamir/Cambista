@@ -1,3 +1,7 @@
+// Cambista — Android project preparation
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // Adjusts the generated android/ project (run after `npx cap add android`).
 // Idempotent: running it twice changes nothing the second time.
 //

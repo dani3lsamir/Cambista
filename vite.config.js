@@ -1,3 +1,6 @@
+// Cambista — Vite configuration
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { defineConfig } from 'vite';
 import { readFileSync } from 'node:fs';
 

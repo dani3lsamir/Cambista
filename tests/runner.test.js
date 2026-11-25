@@ -1,3 +1,7 @@
+// Cambista — tests for the background runner
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // Loads the generated runner the way @capacitor/background-runner does (a plain script with
 // globals) and drives its events with fake CapacitorKV / CapacitorNotifications / fetch.
 import { describe, it, expect, beforeAll } from 'vitest';

@@ -1,3 +1,6 @@
+// Cambista — tests for the rates core
+// Copyright (C) 2026 dani3lsamir
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect, vi } from 'vitest';
 import {
   parseLocaleNumber, parseBcbHome, parseBinanceAds, median, fetchSnapshot, gap, isDue,
