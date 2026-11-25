@@ -13,7 +13,10 @@
     <header class="header">
       <div class="wrap header-inner">
         <a class="brand" href="./"><img src="../resources/icon.svg" width="35" height="35" alt="" />Cambista</a>
-        <button id="language" class="language" type="button">EN</button>
+        <div class="header-controls">
+          <button id="theme" class="theme-toggle" type="button" aria-label="Modo noche" aria-pressed="false">☾</button>
+          <button id="language" class="language" type="button">EN</button>
+        </div>
       </div>
     </header>
     <main class="wrap">
@@ -74,11 +77,8 @@
     </main>
     <footer class="wrap footer">
       <p data-text="webMethod">BCB en Bs por USD. P2P en Bs por USDT, punto medio entre las medianas de compra y venta. Los valores P2P son referenciales.</p>
-      <nav data-label="webLinks">
-        <a href="https://p2p.binance.com/es/trade/USDT?fiat=BOB">Binance P2P</a>
-        <a href="https://github.com/dani3lsamir/Cambista/releases/latest" data-text="webDownload">Descargar APK</a>
-        <a href="https://github.com/dani3lsamir/Cambista" data-text="webCode">Código</a>
-      </nav>
+      <a class="footer-source" href="https://p2p.binance.com/es/trade/USDT?fiat=BOB">Binance P2P</a>
+      <a class="download" href="https://github.com/dani3lsamir/Cambista/releases/latest" data-text="webDownload">Descargar App Android</a>
     </footer>
     <script type="module" src="./main.js"></script>
   </body>

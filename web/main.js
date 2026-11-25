@@ -10,11 +10,32 @@ const $ = (id) => document.getElementById(id);
 const amountInput = $('amount');
 const currencyInput = $('currency');
 const updateChart = rateChart($('chart'), $('chart-reading'));
+const themeButton = $('theme');
+const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+const THEME_KEY = 'cambista-web-theme';
 const DEMO = new URLSearchParams(location.search).has('demo');
 const STALE_MINUTES = 90;
 let market = emptyMarket();
 let loading = true;
 let range = '30';
+let theme;
+try {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === 'light' || stored === 'dark') theme = stored;
+} catch {
+  // The toggle still works for this page when storage is unavailable.
+}
+
+function applyTheme() {
+  const current = theme ?? (systemTheme.matches ? 'dark' : 'light');
+  const dark = current === 'dark';
+  document.documentElement.dataset.theme = current;
+  document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement)
+    .getPropertyValue('--page-bg').trim();
+  themeButton.setAttribute('aria-label', t('webNightMode'));
+  themeButton.setAttribute('aria-pressed', String(dark));
+  themeButton.textContent = dark ? '☀' : '☾';
+}
 
 function date(value, includeTime = false) {
   return new Intl.DateTimeFormat(t('locale'), {
@@ -36,6 +57,7 @@ function convert() {
 }
 
 function render() {
+  applyTheme();
   for (const node of document.querySelectorAll('[data-text]')) node.textContent = t(node.dataset.text);
   for (const node of document.querySelectorAll('[data-label]')) node.setAttribute('aria-label', t(node.dataset.label));
   const language = $('language');
@@ -93,6 +115,14 @@ async function loadMarket() {
 $('language').addEventListener('click', () => {
   setLanguage(lang() === 'es' ? 'en' : 'es');
   render();
+});
+themeButton.addEventListener('click', () => {
+  theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  render();
+});
+systemTheme.addEventListener('change', () => {
+  if (!theme) render();
 });
 amountInput.addEventListener('input', convert);
 currencyInput.addEventListener('change', convert);
