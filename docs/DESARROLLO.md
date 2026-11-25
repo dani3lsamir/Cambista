@@ -22,6 +22,16 @@ npm run dev         # abre http://localhost:5173/?demo
 
 En un navegador normal, el BCB y Binance bloquean las consultas desde otros sitios (CORS), así que se usa `?demo` con datos de ejemplo. En la app de Android las consultas pasan por código nativo y no tienen ese límite.
 
+## Cambista Web
+
+`npm run dev:web` abre la interfaz web. Agrega `?demo` a la URL para ver la gráfica y probar el conversor con datos de ejemplo. `npm run build:web` genera `dist-web/` y `npm run preview:web` sirve ese resultado, incluidos los datos que pongas en `dist-web/data/market.json`.
+
+En GitHub, elige **Settings → Pages → Source → GitHub Actions**. El flujo **Cambista Web** consulta las fuentes a los minutos 07 y 37 de cada hora. También podés iniciarlo desde **Actions → Cambista Web → Run workflow**. La rama `pages-data` conserva el historial. El sitio muestra el último dato válido de cada fuente con su fecha y grafica la última lectura válida de cada día, en horario de Bolivia. La vista de hoy usa las capturas intradía y el gráfico mensual conserva los huecos de las fechas sin lectura.
+
+Las fuentes de la web son el BCB y los anuncios de Binance P2P en USDT/BOB. La calculadora puede usar los límites y la cantidad disponible de los anuncios observados en la última captura, o la referencia general cuando el monto no coincide con una de esas ofertas. El historial P2P empieza con la primera captura válida. El flujo inicial importa las fechas del tramo oficial (TCO) de la [serie del BCB](https://www.bcb.gob.bo/grafico_evolutivo/) desde el 29 de junio de 2026.
+
+Para probar la consulta desde tu equipo después de compilar, ejecutá `node scripts/collect-market.mjs dist-web/data/market.json`.
+
 ## Cómo está hecho
 
 ```

@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- Copyright (C) 2026 dani3lsamir · SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Tipo de cambio oficial del BCB, USDT en Binance P2P, conversor e historial de cotizaciones en Bolivia." />
+    <meta name="theme-color" content="#f8f7f3" />
+    <link rel="icon" href="../resources/icon.svg" type="image/svg+xml" />
+    <title>Cambista · Dólar en Bolivia</title>
+  </head>
+  <body>
+    <header class="header">
+      <div class="wrap header-inner">
+        <a class="brand" href="./"><img src="../resources/icon.svg" width="35" height="35" alt="" />Cambista</a>
+        <button id="language" class="language" type="button">EN</button>
+      </div>
+    </header>
+    <main class="wrap">
+      <div class="heading">
+        <h1 data-text="webTitle">Dólar en Bolivia</h1>
+        <time id="local-date"></time>
+      </div>
+      <p id="notice" class="notice" role="status"></p>
+      <section class="quotes" data-label="rates">
+        <article class="quote official">
+          <h2 data-text="webOfficial">BCB oficial</h2>
+          <p class="price"><span id="official">—</span><small data-text="webPerUsd">Bs por USD</small></p>
+          <p class="source" id="official-date"></p>
+          <a class="source-link" href="https://www.bcb.gob.bo/" data-text="webBcbSource">Banco Central de Bolivia</a>
+        </article>
+        <article class="quote market">
+          <div class="quote-heading">
+            <h2 data-text="webParallel">USDT en Binance P2P</h2>
+            <span class="gap" id="gap" hidden></span>
+          </div>
+          <p class="price"><span id="parallel">—</span><small data-text="webPerUsdt">Bs por USDT</small></p>
+          <dl class="sides">
+            <div><dt data-text="webPay">Pagás al comprar</dt><dd id="buy">—</dd></div>
+            <div><dt data-text="webReceive">Recibís al vender</dt><dd id="sell">—</dd></div>
+          </dl>
+          <p class="source" id="parallel-time"></p>
+        </article>
+      </section>
+      <div class="details">
+        <section class="panel calculator" aria-labelledby="calculator-title">
+          <h2 id="calculator-title" data-text="webConverter">Calculá tu cambio</h2>
+          <label for="amount" data-text="webYouHave">Tenés</label>
+          <div class="amount">
+            <input id="amount" inputmode="decimal" type="text" placeholder="0" autocomplete="off" />
+            <select id="currency" data-label="webCurrency"><option value="BOB">Bs</option><option value="USDT">USDT</option></select>
+          </div>
+          <div class="converted">
+            <p data-text="webYouGet">Recibirías aprox.</p>
+            <output id="result" for="amount currency" aria-live="polite">—</output>
+            <p id="conversion-note" class="source"></p>
+          </div>
+        </section>
+        <section class="panel history" aria-labelledby="history-title">
+          <div class="history-heading">
+            <h2 id="history-title" data-text="webTrend">Evolución</h2>
+            <div class="period" role="group" data-label="webPeriod">
+              <button type="button" data-range="30" aria-pressed="true" data-text="webMonth">30 días</button>
+              <button type="button" data-range="today" aria-pressed="false" data-text="today">Hoy</button>
+            </div>
+          </div>
+          <div class="legend" aria-hidden="true"><span data-text="webOfficial">BCB oficial</span><span data-text="webParallelShort">USDT P2P</span></div>
+          <div class="plot">
+            <canvas id="chart" tabindex="0" data-label="webChart" aria-describedby="chart-reading"></canvas>
+          </div>
+          <p id="chart-reading" class="chart-reading" aria-live="polite"></p>
+        </section>
+      </div>
+    </main>
+    <footer class="wrap footer">
+      <p data-text="webMethod">BCB en Bs por USD. P2P en Bs por USDT, punto medio entre las medianas de compra y venta. Los valores P2P son referenciales.</p>
+      <nav data-label="webLinks">
+        <a href="https://p2p.binance.com/es/trade/USDT?fiat=BOB">Binance P2P</a>
+        <a href="https://github.com/dani3lsamir/Cambista/releases/latest" data-text="webDownload">Descargar APK</a>
+        <a href="https://github.com/dani3lsamir/Cambista" data-text="webCode">Código</a>
+      </nav>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
