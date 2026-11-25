@@ -1,9 +1,9 @@
 // Copyright (C) 2026 dani3lsamir
 // SPDX-License-Identifier: GPL-3.0-or-later
 import './styles.css';
-import { fmtNumber, fmtPercent, gap, parseAmountInput } from '../src/core/rates-core.js';
+import { fmtNumber, fmtPercent, parseAmountInput } from '../src/core/rates-core.js';
 import { lang, setLanguage, t } from '../src/i18n.js';
-import { BOLIVIA_TIME_ZONE, boliviaDay, emptyMarket, estimateForAmount } from './market.js';
+import { BOLIVIA_TIME_ZONE, bcbValidOn, boliviaDay, emptyMarket, estimateForAmount, quoteComparison } from './market.js';
 import { rateChart } from './chart.js';
 
 const $ = (id) => document.getElementById(id);
@@ -69,20 +69,30 @@ function render() {
   $('local-date').dateTime = today;
   $('local-date').textContent = date(now);
   const { bcb, p2p } = market.latest;
-  const officialCurrent = bcb?.from <= today && today <= bcb?.through;
-  const p2pCurrent = p2p && now - Date.parse(p2p.at) <= STALE_MINUTES * 60 * 1000;
-  $('notice').textContent = DEMO ? t('webDemo') : loading ? t('webLoading')
-    : !bcb && !p2p ? t('webEmpty') : !officialCurrent || !p2pCurrent ? t('webDelayed') : '';
+  const p2pDelayed = p2p && now - Date.parse(p2p.at) > STALE_MINUTES * 60 * 1000;
+  $('notice').textContent = DEMO ? t('webDemo') : loading ? t('webLoading') : !bcb && !p2p ? t('webEmpty') : '';
 
   $('official').textContent = fmtNumber(bcb?.rate, 2, lang());
   $('parallel').textContent = fmtNumber(p2p?.mid, 3, lang());
   $('buy').textContent = fmtNumber(p2p?.buy, 3, lang());
   $('sell').textContent = fmtNumber(p2p?.sell, 3, lang());
-  $('official-date').textContent = bcb ? t('webValid', { date: date(`${bcb.through}T12:00:00Z`) }) : '';
-  $('parallel-time').textContent = p2p ? t('webObserved', { date: date(p2p.at, true) }) : '';
-  const difference = gap(p2p?.mid, bcb?.rate);
-  $('gap').hidden = !Number.isFinite(difference) || !officialCurrent || !p2pCurrent || boliviaDay(p2p.at) !== today;
-  $('gap').textContent = t('webGap', { value: fmtPercent(difference, lang()) });
+  const officialStatus = bcbValidOn(bcb, today) ? 'webValid' : bcb?.from > today ? 'webValidFrom' : 'webOfficialExpired';
+  const officialDate = officialStatus === 'webValidFrom' ? bcb.from : bcb?.through;
+  $('official-date').textContent = bcb ? t(officialStatus, { date: date(`${officialDate}T12:00:00Z`) })
+    : loading ? '' : t('webOfficialMissing');
+  $('official-date').toggleAttribute('data-delayed', !loading && officialStatus !== 'webValid');
+  $('parallel-time').textContent = p2p ? t(p2pDelayed ? 'webP2pDelayed' : 'webObserved', { date: date(p2p.at, true), minutes: STALE_MINUTES })
+    : loading ? '' : t('webP2pMissing');
+  $('parallel-time').toggleAttribute('data-delayed', !loading && (!p2p || p2pDelayed));
+
+  const comparison = quoteComparison(bcb, p2p);
+  $('gap').textContent = fmtPercent(comparison?.ratio, lang());
+  $('gap-amount').hidden = !comparison;
+  $('gap-amount').textContent = comparison ? t('webGapAmount', { value: new Intl.NumberFormat(t('locale'), {
+    signDisplay: 'exceptZero', minimumFractionDigits: 3, maximumFractionDigits: 3,
+  }).format(comparison.amount) }) : '';
+  $('gap-note').textContent = comparison ? (p2pDelayed || comparison.day !== today ? t('webGapDate', { date: date(comparison.at) }) : '')
+    : loading ? '' : t(bcb && p2p ? 'webGapDifferentDays' : 'webGapMissing');
   convert();
   updateChart(market, range, now);
 }

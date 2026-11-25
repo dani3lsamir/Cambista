@@ -10,7 +10,7 @@ La C ámbar es el símbolo de Cambista. Los dos arcos comparten un centro y deja
 | Carbón | `#171513` | Símbolo y nombre sobre fondo claro, fondo de Android |
 | Marfil | `#FAF7EE` | Nombre sobre carbón y fondo del favicon |
 
-El nombre está compuesto en [Manrope](https://fonts.google.com/specimen/Manrope) Semibold (600). En los SVG del logo el nombre está trazado como contornos para conservar el espaciado sin instalar la fuente. Para cambiar el texto, volvé a componerlo en Manrope y convertí el resultado a contornos.
+El nombre está compuesto en [Manrope](https://fonts.google.com/specimen/Manrope) Semibold (600). En los SVG del logo, el símbolo hace de C inicial y «ambista» está trazado como contornos para conservar el espaciado sin instalar la fuente. Para cambiar el texto, volvé a componerlo en Manrope y convertí el resultado a contornos.
 
 Usá el logo claro en fondos claros y el logo oscuro en fondos carbón. El ámbar sobre carbón tiene una relación de contraste de 9,8:1 y el carbón sobre marfil de 17:1. Para aplicaciones pequeñas conservá el carbón sobre marfil o el ámbar sobre carbón. Dejá al menos un margen alrededor de la marca equivalente a un octavo de la altura visible de la C. En cabeceras, el conjunto con nombre funciona desde 32 px de alto. Para la pestaña del navegador, usá el favicon cuadrado.
 
@@ -18,8 +18,8 @@ Usá el logo claro en fondos claros y el logo oscuro en fondos carbón. El ámba
 
 | Pieza | Archivo y tamaño | Edición |
 |---|---|---|
-| Logo para fondo claro | [logo-light.svg](../resources/brand/logo-light.svg), proporción 431 × 96 | Vector editable, fondo transparente |
-| Logo para fondo oscuro | [logo-dark.svg](../resources/brand/logo-dark.svg), proporción 431 × 96 | Vector editable, fondo transparente |
+| Logo para fondo claro | [logo-light.svg](../resources/brand/logo-light.svg), proporción 362 × 96 | Vector editable, fondo transparente |
+| Logo para fondo oscuro | [logo-dark.svg](../resources/brand/logo-dark.svg), proporción 362 × 96 | Vector editable, fondo transparente |
 | Símbolos sueltos | [Ámbar](../resources/brand/symbol-amber.svg) y [carbón](../resources/brand/symbol-charcoal.svg), proporción 96 × 96 | Vectores editables, fondo transparente |
 | Favicon | [SVG](../resources/brand/favicon.svg) y PNG en [16](../resources/brand/favicon-16.png), [32](../resources/brand/favicon-32.png) y [48 px](../resources/brand/favicon-48.png) | El SVG es vectorial. Los PNG tienen las esquinas transparentes |
 | Ícono Android completo | [icon-only.png](../resources/icon-only.png), 1024 × 1024 px, y su [versión vectorial](../resources/icon.svg) | El PNG es plano. El SVG permite editar forma y colores |
